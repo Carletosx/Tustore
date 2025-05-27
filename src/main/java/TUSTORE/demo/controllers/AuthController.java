@@ -68,6 +68,13 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+        // Verificar si ya existe algún usuario administrador
+        if (usuarioRepository.count() > 0) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new MessageResponse("Error: El registro inicial de administrador ya fue realizado. Los nuevos usuarios deben ser creados por un administrador."));
+        }
+
         if (usuarioRepository.existsByUsername(signUpRequest.getUsername())) {
             return ResponseEntity
                     .badRequest()
@@ -80,38 +87,16 @@ public class AuthController {
                     .body(new MessageResponse("Error: El email ya está en uso!"));
         }
 
-        // Crear nueva cuenta de usuario
+        // Crear nueva cuenta de administrador
         Usuario usuario = new Usuario(signUpRequest.getUsername(),
                                  signUpRequest.getEmail(),
                                  encoder.encode(signUpRequest.getPassword()));
 
-        Set<String> strRoles = signUpRequest.getRoles();
+        // Asignar rol de administrador
         Set<Rol> roles = new HashSet<>();
-
-        if (strRoles == null) {
-            Rol storekeeperRole = rolRepository.findByNombre(ERol.ROLE_STOREKEEPER)
-                    .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado."));
-            roles.add(storekeeperRole);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                case "admin":
-                    Rol adminRole = rolRepository.findByNombre(ERol.ROLE_ADMIN)
-                            .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado."));
-                    roles.add(adminRole);
-                    break;
-                case "cashier":
-                    Rol cashierRole = rolRepository.findByNombre(ERol.ROLE_CASHIER)
-                            .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado."));
-                    roles.add(cashierRole);
-                    break;
-                default:
-                    Rol storekeeperRole = rolRepository.findByNombre(ERol.ROLE_STOREKEEPER)
-                            .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado."));
-                    roles.add(storekeeperRole);
-                }
-            });
-        }
+        Rol adminRole = rolRepository.findByNombre(ERol.ROLE_ADMIN)
+                .orElseThrow(() -> new RuntimeException("Error: Rol de administrador no encontrado."));
+        roles.add(adminRole);
 
         usuario.setRoles(roles);
         usuarioRepository.save(usuario);
