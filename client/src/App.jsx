@@ -6,6 +6,8 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import POS from './components/POS';
 import Inventory from './components/Inventory';
+import Products from './components/Products';
+import Reports from './components/Reports';
 import PrivateRoute from './routes/PrivateRoute';
 import { roleMapping } from './routes/authRoutes';
 
@@ -45,6 +47,26 @@ function App() {
             <PrivateRoute requiredRole={roleMapping.almacenero}>
               <Layout>
                 <Inventory />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/productos"
+          element={
+            <PrivateRoute requiredRole={roleMapping.admin}>
+              <Layout>
+                <Products />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <PrivateRoute requiredRole={roleMapping.admin}>
+              <Layout>
+                <Reports />
               </Layout>
             </PrivateRoute>
           }
