@@ -9,7 +9,8 @@ const Register = () => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    password: ''
+    password: '',
+    nombreNegocio: ''
   });
 
   const handleChange = (e) => {
@@ -26,17 +27,14 @@ const Register = () => {
     const result = await handleRegister({
       username: formData.username,
       email: formData.email,
-      password: formData.password
+      password: formData.password,
+      nombreNegocio: formData.nombreNegocio
     });
 
     setToast({
-      message: result.message || 'Error: El registro inicial de administrador ya fue realizado. Los nuevos usuarios deben ser creados por un administrador.',
+      message: result.message || 'Error al registrar el administrador',
       type: result.success ? 'success' : 'error'
     });
-
-    if (result.message && result.message.includes('registro inicial de administrador ya fue realizado')) {
-      setTimeout(() => navigate('/'), 3000);
-    }
 
     if (result.success) {
       setTimeout(() => navigate('/'), 2000);
@@ -55,17 +53,31 @@ const Register = () => {
           </svg>
         </button>
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Registro de Administrador</h2>
-        <p className="text-center text-gray-600 mb-8">Este formulario es exclusivamente para el registro del primer administrador del sistema. Los usuarios adicionales deben ser creados por un administrador existente.</p>
+        <p className="text-center text-gray-600 mb-8">Complete el formulario para registrar un nuevo negocio en el sistema.</p>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="nombre" className="block text-sm font-medium text-gray-700">
-              Nombre Completo
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              Nombre de Usuario
             </label>
             <input
               type="text"
               id="username"
               name="username"
               value={formData.username}
+              onChange={handleChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="nombreNegocio" className="block text-sm font-medium text-gray-700">
+              Nombre del Negocio
+            </label>
+            <input
+              type="text"
+              id="nombreNegocio"
+              name="nombreNegocio"
+              value={formData.nombreNegocio}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               required
@@ -99,22 +111,15 @@ const Register = () => {
               required
             />
           </div>
-        
           <button
             type="submit"
-            className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Registrarse
+            Registrar Administrador
           </button>
         </form>
       </div>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );
 };

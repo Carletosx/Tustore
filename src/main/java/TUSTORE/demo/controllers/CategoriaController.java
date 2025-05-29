@@ -1,11 +1,15 @@
 package TUSTORE.demo.controllers;
 
 import TUSTORE.demo.model.Categoria;
+import TUSTORE.demo.model.Usuario;
 import TUSTORE.demo.services.CategoriaService;
+import TUSTORE.demo.repository.UsuarioRepository;
+import TUSTORE.demo.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -17,6 +21,9 @@ import java.util.List;
 public class CategoriaController {
     @Autowired
     private CategoriaService categoriaService;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
     @GetMapping
     public ResponseEntity<List<Categoria>> getAllCategorias() {
@@ -34,6 +41,11 @@ public class CategoriaController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Categoria> createCategoria(@Valid @RequestBody Categoria categoria) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Usuario administrador = usuarioRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado."));
+        
+        categoria.setAdministrador(administrador);
         Categoria nuevaCategoria = categoriaService.save(categoria);
         return new ResponseEntity<>(nuevaCategoria, HttpStatus.CREATED);
     }
@@ -44,7 +56,13 @@ public class CategoriaController {
         if (!categoriaService.existsById(id)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Usuario administrador = usuarioRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado."));
+
         categoria.setId(id);
+        categoria.setAdministrador(administrador);
         Categoria updatedCategoria = categoriaService.save(categoria);
         return new ResponseEntity<>(updatedCategoria, HttpStatus.OK);
     }

@@ -58,19 +58,23 @@ public class WebSecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> 
                 auth.requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/test/**").permitAll()
-                    .requestMatchers("/h2-console/**").permitAll()
-                    .requestMatchers("/api/estadisticas/**").hasRole("ADMIN")
+                    .requestMatchers("api/test/**").permitAll()
+                    .requestMatchers("api/productos/**").permitAll()
+                    .requestMatchers("api/categorias/**").permitAll()
+                    .requestMatchers("api/categorias").permitAll()
+                    .requestMatchers("/api/productos/crear").hasRole("ADMIN")
+                    .requestMatchers("/api/productos/editar/**").hasRole("ADMIN")
+                    .requestMatchers("/api/productos/eliminar/**").hasRole("ADMIN")
+                    .requestMatchers("/api/categorias/crear").hasRole("ADMIN")
+                    .requestMatchers("/api/categorias/editar/**").hasRole("ADMIN")
+                    .requestMatchers("/api/categorias/eliminar/**").hasRole("ADMIN")
                     .anyRequest().authenticated()
             );
-        
-        // Para permitir acceso a la consola H2
-        http.headers(headers -> headers.frameOptions(frameOption -> frameOption.sameOrigin()));
         
         http.authenticationProvider(authenticationProvider());
 
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 }

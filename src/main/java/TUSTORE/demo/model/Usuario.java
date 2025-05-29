@@ -18,7 +18,8 @@ import java.util.Set;
 @Table(name = "usuarios",
        uniqueConstraints = {
            @UniqueConstraint(columnNames = "username"),
-           @UniqueConstraint(columnNames = "email")
+           @UniqueConstraint(columnNames = "email"),
+           @UniqueConstraint(columnNames = "codigo_negocio")
        })
 public class Usuario {
     @Id
@@ -38,11 +39,25 @@ public class Usuario {
     @Size(max = 120)
     private String password;
 
+    @NotBlank
+    @Size(max = 100)
+    @Column(name = "nombre_negocio")
+    private String nombreNegocio;
+
+    @Column(name = "codigo_negocio")
+    private String codigoNegocio;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "usuario_roles",
             joinColumns = @JoinColumn(name = "usuario_id"),
             inverseJoinColumns = @JoinColumn(name = "rol_id"))
     private Set<Rol> roles = new HashSet<>();
+
+    @OneToMany(mappedBy = "administrador", cascade = CascadeType.ALL)
+    private Set<Producto> productos = new HashSet<>();
+
+    @OneToMany(mappedBy = "administrador", cascade = CascadeType.ALL)
+    private Set<Venta> ventas = new HashSet<>();
 
     public Usuario(String username, String email, String password) {
         this.username = username;

@@ -11,6 +11,7 @@ import TUSTORE.demo.repository.RolRepository;
 import TUSTORE.demo.repository.UsuarioRepository;
 import TUSTORE.demo.security.jwt.JwtUtils;
 import TUSTORE.demo.security.services.UserDetailsImpl;
+import TUSTORE.demo.security.services.UserDetailsServiceImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -45,9 +46,11 @@ public class AuthController {
     @Autowired
     JwtUtils jwtUtils;
 
+    @Autowired
+    UserDetailsServiceImpl userDetailsService;
+
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
@@ -68,13 +71,6 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        // Verificar si ya existe algún usuario administrador
-        if (usuarioRepository.count() > 0) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new MessageResponse("Error: El registro inicial de administrador ya fue realizado. Los nuevos usuarios deben ser creados por un administrador."));
-        }
-
         if (usuarioRepository.existsByUsername(signUpRequest.getUsername())) {
             return ResponseEntity
                     .badRequest()
@@ -95,12 +91,43 @@ public class AuthController {
         // Asignar rol de administrador
         Set<Rol> roles = new HashSet<>();
         Rol adminRole = rolRepository.findByNombre(ERol.ROLE_ADMIN)
-                .orElseThrow(() -> new RuntimeException("Error: Rol de administrador no encontrado."));
+                .orElseThrow(() -> new RuntimeException("Error: Rol no encontrado."));
         roles.add(adminRole);
-
         usuario.setRoles(roles);
+
         usuarioRepository.save(usuario);
 
         return ResponseEntity.ok(new MessageResponse("Usuario registrado exitosamente!"));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
+        try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String jwt = authHeader.substring(7);
+                if (jwtUtils.validateJwtToken(jwt)) {
+                    String username = jwtUtils.getUserNameFromJwtToken(jwt);
+                    UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(username);
+                    
+                    Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                    
+                    String newToken = jwtUtils.generateJwtToken(authentication);
+                    
+                    List<String> roles = userDetails.getAuthorities().stream()
+                            .map(item -> item.getAuthority())
+                            .collect(Collectors.toList());
+                    
+                    return ResponseEntity.ok(new JwtResponse(newToken,
+                                                         userDetails.getId(),
+                                                         userDetails.getUsername(),
+                                                         userDetails.getEmail(),
+                                                         roles));
+                }
+            }
+            return ResponseEntity.badRequest().body(new MessageResponse("Token inválido"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error al refrescar el token"));
+        }
     }
 }

@@ -52,9 +52,12 @@ const Layout = ({ children }) => {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-lg">
-        <div className="p-4">
+        <div className="p-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">TuStore</h2>
-          <p className="text-sm text-gray-600 mt-1">{user?.username}</p>
+          <div className="mt-2">
+            <p className="text-sm font-medium text-gray-900">{user?.username}</p>
+            <p className="text-xs text-gray-600">{user?.nombreNegocio}</p>
+          </div>
         </div>
         <nav className="mt-4">
           {menuItems.map((item) => (

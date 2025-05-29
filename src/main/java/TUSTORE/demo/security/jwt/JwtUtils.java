@@ -28,6 +28,9 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setSubject((userPrincipal.getUsername()))
+                .claim("roles", userPrincipal.getAuthorities().stream()
+                        .map(item -> item.getAuthority())
+                        .toList())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key(), SignatureAlgorithm.HS256)
@@ -43,9 +46,27 @@ public class JwtUtils {
                 .parseClaimsJws(token).getBody().getSubject();
     }
 
+    public Claims getAllClaimsFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
     public boolean validateJwtToken(String authToken) {
         try {
-            Jwts.parserBuilder().setSigningKey(key()).build().parse(authToken);
+            Claims claims = getAllClaimsFromToken(authToken);
+            // Validate expiration
+            if (claims.getExpiration().before(new Date())) {
+                logger.error("Token JWT expirado");
+                return false;
+            }
+            // Validate roles claim exists
+            if (!claims.containsKey("roles")) {
+                logger.error("Token JWT no contiene roles");
+                return false;
+            }
             return true;
         } catch (MalformedJwtException e) {
             logger.error("Token JWT inválido: {}", e.getMessage());
