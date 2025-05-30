@@ -4,10 +4,12 @@ import TUSTORE.demo.model.Categoria;
 import TUSTORE.demo.model.Producto;
 import TUSTORE.demo.model.Usuario;
 import TUSTORE.demo.payload.request.CreateUpdateProductoRequest;
+import TUSTORE.demo.payload.response.ProductoDto;
 import TUSTORE.demo.repository.CategoriaRepository;
 import TUSTORE.demo.repository.UsuarioRepository;
 import TUSTORE.demo.security.services.UserDetailsImpl;
 import TUSTORE.demo.services.ProductoService;
+import TUSTORE.demo.mapper.ProductoMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -32,32 +35,58 @@ public class ProductoController {
     @Autowired
     private CategoriaRepository categoriaRepository;
 
+    @Autowired
+    private ProductoMapper productoMapper;
+
     @GetMapping
-    public ResponseEntity<List<Producto>> getAllProductos(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<List<ProductoDto>> getAllProductos(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         Usuario admin = usuarioRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado."));
         List<Producto> productos = productoService.findAllByAdministrador(admin);
-        // Convert byte[] imagen to Base64 String for frontend
-        productos.forEach(producto -> {
-            if (producto.getImagen() != null) {
-                producto.setImagenBase64(Base64.getEncoder().encodeToString(producto.getImagen()));
-            }
-        });
-        return new ResponseEntity<>(productos, HttpStatus.OK);
+        List<ProductoDto> productoDtos = productos.stream()
+                .map(producto -> {
+                    ProductoDto dto = productoMapper.toDto(producto);
+                    if (producto.getImagen() != null) {
+                        dto.setImagenBase64(Base64.getEncoder().encodeToString(producto.getImagen()));
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(productoDtos, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Producto> getProductoById(@PathVariable("id") Long id, @AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<ProductoDto> getProductoById(@PathVariable("id") Long id, @AuthenticationPrincipal UserDetailsImpl userDetails) {
         Usuario admin = usuarioRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado."));
         return productoService.findByIdAndAdministrador(id, admin)
                 .map(producto -> {
+                    ProductoDto dto = productoMapper.toDto(producto);
                     if (producto.getImagen() != null) {
-                        producto.setImagenBase64(Base64.getEncoder().encodeToString(producto.getImagen()));
+                        dto.setImagenBase64(Base64.getEncoder().encodeToString(producto.getImagen()));
                     }
-                    return new ResponseEntity<>(producto, HttpStatus.OK);
+                    return dto;
                 })
+                .map(ResponseEntity::ok)
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    @GetMapping("/categoria/{categoryId}")
+    public ResponseEntity<List<ProductoDto>> getProductosByCategoria(@PathVariable("categoryId") Long categoryId, @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Usuario admin = usuarioRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Error: Usuario no encontrado."));
+        
+        List<Producto> productos = productoService.findByCategoriaIdAndAdministrador(categoryId, admin);
+        List<ProductoDto> productoDtos = productos.stream()
+                .map(producto -> {
+                    ProductoDto dto = productoMapper.toDto(producto);
+                    if (producto.getImagen() != null) {
+                        dto.setImagenBase64(Base64.getEncoder().encodeToString(producto.getImagen()));
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(productoDtos, HttpStatus.OK);
     }
 
     @PostMapping

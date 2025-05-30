@@ -6,6 +6,8 @@ const POS = () => {
   const [products, setProducts] = useState([]);
   const [toast, setToast] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -16,10 +18,11 @@ const POS = () => {
       });
       return;
     }
-    fetchProducts();
-  }, []);
+    fetchCategories();
+    fetchProducts(selectedCategory);
+  }, [selectedCategory]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (categoryId = null) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -30,7 +33,12 @@ const POS = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8080/api/productos', {
+      let url = 'http://localhost:8080/api/productos';
+      if (categoryId) {
+        url = `http://localhost:8080/api/productos/categoria/${categoryId}`;
+      }
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -61,12 +69,46 @@ const POS = () => {
     }
   };
 
-  // Productos de ejemplo (en una implementación real, esto vendría de una API)
-  // const sampleProducts = [
-  //   { id: 1, name: 'Laptop HP', price: 2500.00, stock: 5 },
-  //   { id: 2, name: 'Mouse Gamer', price: 120.00, stock: 15 },
-  //   { id: 3, name: 'Teclado Mecánico', price: 250.00, stock: 8 },
-  // ];
+  const fetchCategories = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      const response = await fetch('http://localhost:8080/api/categorias', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 401) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al cargar categorías');
+      }
+    } catch (error) {
+      setToast({
+        message: error.message,
+        type: 'error'
+      });
+      setCategories([]);
+    }
+  };
 
   const addToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id);
@@ -85,7 +127,9 @@ const POS = () => {
           : item
       ));
     } else {
-      setCart([...cart, { ...product, quantity: 1, price: parseFloat(product.precio) }]);
+      setCart([...cart, { ...product, quantity: 1, precio: product.precio }]);
+      console.log('Product added to cart:', { ...product, quantity: 1, precio: product.precio });
+      console.log('Current cart:', [...cart, { ...product, quantity: 1, precio: product.precio }]);
     }
   };
 
@@ -110,7 +154,9 @@ const POS = () => {
   };
 
   const getTotal = () => {
-    return cart.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
+    const total = cart.reduce((total, item) => total + (item.precio * item.quantity), 0);
+    console.log('Calculated total:', total);
+    return total;
   };
 
   const handleCheckout = async () => {
@@ -166,9 +212,11 @@ const POS = () => {
     }
   };
 
-  const filteredProducts = products.filter(product => // Use fetched products
-    product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) // Use product.nombre
-  );
+  const filteredProducts = products.filter(product => {
+    const matchesSearchTerm = product.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory ? product.categoria.id === selectedCategory : true;
+    return matchesSearchTerm && matchesCategory;
+  });
 
   return (
     <div className="flex h-full gap-6">
@@ -183,6 +231,20 @@ const POS = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+        </div>
+        <div className="mb-4">
+          <select
+            value={selectedCategory || ''}
+            onChange={(e) => setSelectedCategory(e.target.value === '' ? null : parseInt(e.target.value))}
+            className="w-full p-2 border rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">Todas las categorías</option>
+            {categories.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.nombre}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map(product => (

@@ -285,7 +285,7 @@ const Products = () => {
         setProducts(Array.isArray(data) ? data.map(product => ({
           ...product,
           precio: parseFloat(product.precio),
-          categoria: categories.find(cat => cat.id === product.categoria?.id)?.nombre || 'Sin categoría'
+          // Removed the line that was incorrectly mapping the category
         })) : []);
       } else {
         throw new Error('Error al cargar productos');
@@ -373,7 +373,7 @@ const Products = () => {
                 type="text"
                 value={categoryFormData.nombre}
                 onChange={(e) => setCategoryFormData({...categoryFormData, nombre: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               />
             </div>
@@ -383,7 +383,7 @@ const Products = () => {
                 type="text"
                 value={categoryFormData.descripcion}
                 onChange={(e) => setCategoryFormData({...categoryFormData, descripcion: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -423,7 +423,7 @@ const Products = () => {
               {categories.map((category) => (
                 <tr key={category.id}>
                   <td className="px-6 py-4 whitespace-nowrap">{category.nombre}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{category.descripcion}</td>
+                  <td className="px-6 py-4 whitespace-normal max-w-md">{category.descripcion}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEditCategory(category)}
@@ -458,7 +458,7 @@ const Products = () => {
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               />
             </div>
@@ -468,7 +468,7 @@ const Products = () => {
                 type="text"
                 value={formData.descripcion}
                 onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -498,7 +498,7 @@ const Products = () => {
                 type="number"
                 value={formData.precio}
                 onChange={(e) => setFormData({...formData, precio: parseFloat(e.target.value)})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
                 min="0"
                 step="0.01"
@@ -510,7 +510,7 @@ const Products = () => {
                 type="number"
                 value={formData.stock}
                 onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
                 min="0"
               />
@@ -520,7 +520,7 @@ const Products = () => {
               <select
                 value={formData.categoria}
                 onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               >
                 <option value="">Seleccione una categoría</option>
@@ -561,7 +561,7 @@ const Products = () => {
             placeholder="Buscar productos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         <div className="overflow-x-auto">
@@ -581,11 +581,11 @@ const Products = () => {
               {filteredProducts.map((product) => (
                 <tr key={product.id}>
                   <td className="px-6 py-4 whitespace-nowrap">{product.nombre}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{product.descripcion}</td>
+                  <td className="px-6 py-4 whitespace-normal max-w-md">{product.descripcion}</td>
                   <td className="px-6 py-4 whitespace-nowrap">S/. {product.precio}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {categories.find(cat => cat.id === product.categoriaId)?.nombre || 'Sin categoría'}
+                    {product.categoria?.nombre || 'Sin categoría'}
                   </td>
                   <td className="py-2 px-4 border-b">
                     {product.imagenBase64 && (

@@ -33,4 +33,8 @@ public class ProductoService {
     public void deleteById(Long id) {
         productoRepository.deleteById(id);
     }
+
+    public List<Producto> findByCategoriaIdAndAdministrador(Long categoryId, Usuario administrador) {
+        return productoRepository.findByCategoriaIdAndAdministrador(categoryId, administrador);
+    }
 }

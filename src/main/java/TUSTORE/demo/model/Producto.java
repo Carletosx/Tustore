@@ -42,7 +42,7 @@ public class Producto {
     private String imagenBase64;
 
     @JsonBackReference
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.EAGER) // Asegúrate de que sea EAGER si necesitas la categoría al listar productos
     @JoinColumn(name = "categoria_id")
     private Categoria categoria;
 
