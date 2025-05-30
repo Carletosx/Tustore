@@ -36,7 +36,10 @@ public class Producto {
     @NotNull
     private Integer stock;
 
-    private String imagen;
+    private byte[] imagen;
+
+    @Transient
+    private String imagenBase64;
 
     @JsonBackReference
     @ManyToOne(fetch = FetchType.EAGER)

@@ -16,17 +16,14 @@ const Products = () => {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setToast({
-        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-        type: 'error'
-      });
-      return;
-    }
-    fetchProducts();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      fetchProducts();
+    }
+  }, [categories]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +47,8 @@ const Products = () => {
         ...formData,
         precio: parseFloat(formData.precio),
         stock: parseInt(formData.stock),
-        categoria: { id: parseInt(formData.categoria) }
+        categoriaId: parseInt(formData.categoria),
+        imagenBase64: formData.imagenBase64 // Include imagenBase64 in the request body
       };
 
       const response = await fetch(url, {
@@ -105,7 +103,9 @@ const Products = () => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, imagen: reader.result }));
+        // Extract Base64 string from Data URL
+        const base64String = reader.result.split(',')[1];
+        setFormData(prev => ({ ...prev, imagenBase64: base64String }));
       };
       reader.readAsDataURL(file);
     }
@@ -282,7 +282,11 @@ const Products = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setProducts(Array.isArray(data) ? data : []);
+        setProducts(Array.isArray(data) ? data.map(product => ({
+          ...product,
+          precio: parseFloat(product.precio),
+          categoria: categories.find(cat => cat.id === product.categoria?.id)?.nombre || 'Sin categoría'
+        })) : []);
       } else {
         throw new Error('Error al cargar productos');
       }
@@ -330,9 +334,10 @@ const Products = () => {
       descripcion: product.descripcion,
       precio: product.precio,
       stock: product.stock,
-      categoria: product.categoria?.id || product.categoria,
-      imagen: product.imagen || ''
+      categoria: product.categoria?.id || '',
+      imagen: product.imagenBase64 || '' // Use imagenBase64 for editing
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {
@@ -580,17 +585,11 @@ const Products = () => {
                   <td className="px-6 py-4 whitespace-nowrap">S/. {product.precio}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {categories.find(cat => cat.id === product.categoria?.id)?.nombre || 'Sin categoría'}
+                    {categories.find(cat => cat.id === product.categoriaId)?.nombre || 'Sin categoría'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {product.imagen ? (
-                      <img
-                        src={product.imagen}
-                        alt={product.nombre}
-                        className="h-10 w-10 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <span className="text-gray-400">Sin imagen</span>
+                  <td className="py-2 px-4 border-b">
+                    {product.imagenBase64 && (
+                      <img src={`data:image/jpeg;base64,${product.imagenBase64}`} alt={product.nombre} style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

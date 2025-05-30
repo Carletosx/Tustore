@@ -1,17 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Toast from './Toast';
 
 const POS = () => {
   const [cart, setCart] = useState([]);
+  const [products, setProducts] = useState([]);
   const [toast, setToast] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setToast({
+        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+        type: 'error'
+      });
+      return;
+    }
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      const response = await fetch('http://localhost:8080/api/productos', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 401) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched products data:', data); // Add this line
+        setProducts(Array.isArray(data) ? data.map(product => ({ ...product, precio: parseFloat(product.precio) })) : []);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al cargar productos');
+      }
+    } catch (error) {
+      setToast({
+        message: error.message,
+        type: 'error'
+      });
+      setProducts([]);
+    }
+  };
+
   // Productos de ejemplo (en una implementación real, esto vendría de una API)
-  const sampleProducts = [
-    { id: 1, name: 'Laptop HP', price: 2500.00, stock: 5 },
-    { id: 2, name: 'Mouse Gamer', price: 120.00, stock: 15 },
-    { id: 3, name: 'Teclado Mecánico', price: 250.00, stock: 8 },
-  ];
+  // const sampleProducts = [
+  //   { id: 1, name: 'Laptop HP', price: 2500.00, stock: 5 },
+  //   { id: 2, name: 'Mouse Gamer', price: 120.00, stock: 15 },
+  //   { id: 3, name: 'Teclado Mecánico', price: 250.00, stock: 8 },
+  // ];
 
   const addToCart = (product) => {
     const existingItem = cart.find(item => item.id === product.id);
@@ -30,7 +85,7 @@ const POS = () => {
           : item
       ));
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      setCart([...cart, { ...product, quantity: 1, price: parseFloat(product.precio) }]);
     }
   };
 
@@ -39,7 +94,7 @@ const POS = () => {
   };
 
   const updateQuantity = (productId, newQuantity) => {
-    const product = sampleProducts.find(p => p.id === productId);
+    const product = products.find(p => p.id === productId); // Use fetched products
     if (newQuantity > product.stock) {
       setToast({
         message: 'Stock insuficiente',
@@ -55,20 +110,64 @@ const POS = () => {
   };
 
   const getTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
   };
 
-  const handleCheckout = () => {
-    // Aquí iría la lógica para procesar el pago
-    setToast({
-      message: 'Venta realizada con éxito',
-      type: 'success'
-    });
-    setCart([]);
+  const handleCheckout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      const saleDetails = cart.map(item => ({
+        productoId: item.id,
+        cantidad: item.quantity,
+        precioUnitario: item.precio
+      }));
+
+      const response = await fetch('http://localhost:8080/api/ventas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ detalles: saleDetails })
+      });
+
+      if (response.status === 401) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al procesar la venta');
+      }
+
+      setToast({
+        message: 'Venta realizada con éxito',
+        type: 'success'
+      });
+      setCart([]);
+      fetchProducts(); // Refresh product stock after sale
+    } catch (error) {
+      setToast({
+        message: error.message,
+        type: 'error'
+      });
+    }
   };
 
-  const filteredProducts = sampleProducts.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = products.filter(product => // Use fetched products
+    product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) // Use product.nombre
   );
 
   return (
@@ -88,8 +187,15 @@ const POS = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map(product => (
             <div key={product.id} className="bg-white p-4 rounded-lg shadow">
-              <h3 className="font-semibold">{product.name}</h3>
-              <p className="text-gray-600">S/. {product.price.toFixed(2)}</p>
+              {product.imagenBase64 && (
+                <img
+                  src={`data:image/jpeg;base64,${product.imagenBase64}`}
+                  alt={product.nombre}
+                  className="w-full h-32 object-contain mb-2 rounded"
+                />
+              )}
+              <h3 className="font-semibold">{product.nombre}</h3> {/* Use product.nombre */}
+              <p className="text-gray-600">S/. {product.precio.toFixed(2)}</p> {/* Use product.precio */}
               <p className="text-sm text-gray-500">Stock: {product.stock}</p>
               <button
                 onClick={() => addToCart(product)}
@@ -109,8 +215,8 @@ const POS = () => {
           {cart.map(item => (
             <div key={item.id} className="flex justify-between items-center">
               <div>
-                <h3 className="font-medium">{item.name}</h3>
-                <p className="text-gray-600">S/. {item.price.toFixed(2)}</p>
+                <h3 className="font-medium">{item.nombre}</h3> {/* Use item.nombre */}
+                <p className="text-gray-600">S/. {item.precio.toFixed(2)}</p> {/* Use item.precio */}
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -140,7 +246,7 @@ const POS = () => {
             disabled={cart.length === 0}
             className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
           >
-            Procesar Venta
+            Finalizar Venta
           </button>
         </div>
       </div>

@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -22,11 +22,15 @@ public class Venta {
     private Long id;
 
     @NotNull
-    @Column(name = "fecha_venta")
-    private LocalDateTime fechaVenta;
+    @Column(name = "fecha")
+    private LocalDateTime fecha;
 
     public LocalDateTime getFecha() {
-        return fechaVenta;
+        return fecha;
+    }
+
+    public void setFecha(LocalDateTime fecha) {
+        this.fecha = fecha;
     }
 
     @NotNull
@@ -42,11 +46,11 @@ public class Venta {
     private Usuario administrador;
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DetalleVenta> detalles = new ArrayList<>();
+    private Set<DetalleVenta> detalles = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
-        fechaVenta = LocalDateTime.now();
+        fecha = LocalDateTime.now();
     }
 
     public void calcularTotal() {

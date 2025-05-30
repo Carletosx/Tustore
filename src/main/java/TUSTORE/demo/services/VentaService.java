@@ -5,6 +5,7 @@ import TUSTORE.demo.repository.VentaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +22,7 @@ public class VentaService {
         return ventaRepository.findAll();
     }
     
-    public Optional<Venta> findById(Long id) {
+    public Optional<Venta> obtenerVentaPorId(Long id) {
         return ventaRepository.findById(id);
     }
     
@@ -35,5 +36,13 @@ public class VentaService {
     
     public boolean existsById(Long id) {
         return ventaRepository.existsById(id);
+    }
+
+    public List<Venta> findByUsuarioId(Long userId) {
+        return ventaRepository.findByUsuarioId(userId);
+    }
+
+    public List<Venta> findByUsuarioIdAndFechaBetween(Long userId, LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+        return ventaRepository.findByUsuarioIdAndFechaBetween(userId, fechaInicio, fechaFin);
     }
 }
