@@ -48,6 +48,7 @@ public class VentaController {
         Venta venta = new Venta();
         venta.setFecha(LocalDateTime.now());
         venta.setUsuario(usuario);
+        venta.setMetodoPago(ventaRequest.getMetodoPago());
 
         Set<DetalleVenta> detallesVenta = new HashSet<>();
         BigDecimal totalVenta = BigDecimal.ZERO;

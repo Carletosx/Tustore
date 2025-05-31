@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Toast from './Toast';
+import Cart from './Cart';
+import PaymentOptions from './PaymentOptions';
 
 const POS = () => {
   const [cart, setCart] = useState([]);
@@ -8,6 +10,7 @@ const POS = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -22,14 +25,16 @@ const POS = () => {
     fetchProducts(selectedCategory);
   }, [selectedCategory]);
 
+
+
   const fetchProducts = async (categoryId = null) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         setToast({
-          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-          type: 'error'
-        });
+        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+        type: 'error'
+      });
         return;
       }
 
@@ -46,15 +51,14 @@ const POS = () => {
 
       if (response.status === 401) {
         setToast({
-          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-          type: 'error'
-        });
+        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+        type: 'error'
+      });
         return;
       }
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched products data:', data); // Add this line
         setProducts(Array.isArray(data) ? data.map(product => ({ ...product, precio: parseFloat(product.precio) })) : []);
       } else {
         const errorData = await response.json();
@@ -74,9 +78,9 @@ const POS = () => {
       const token = localStorage.getItem('token');
       if (!token) {
         setToast({
-          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-          type: 'error'
-        });
+        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+        type: 'error'
+      });
         return;
       }
 
@@ -88,9 +92,9 @@ const POS = () => {
 
       if (response.status === 401) {
         setToast({
-          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-          type: 'error'
-        });
+        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+        type: 'error'
+      });
         return;
       }
 
@@ -111,106 +115,50 @@ const POS = () => {
   };
 
   const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-      if (existingItem.quantity >= product.stock) {
-        setToast({
-          message: 'Stock insuficiente',
-          type: 'error'
-        });
-        return;
+    setCart(prevCart => {
+      const existingProduct = prevCart.find(item => item.id === product.id);
+      if (existingProduct) {
+        return prevCart.map(item =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      } else {
+        return [...prevCart, { ...product, quantity: 1 }];
       }
-      setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity: 1, precio: product.precio }]);
-      console.log('Product added to cart:', { ...product, quantity: 1, precio: product.precio });
-      console.log('Current cart:', [...cart, { ...product, quantity: 1, precio: product.precio }]);
-    }
+    });
+    setToast({
+      message: `${product.nombre} añadido al carrito`,
+      type: 'success'
+    });
   };
 
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId));
-  };
+  const updateQuantity = (productId, amount) => {
+    setCart(prevCart => {
+      const productInCart = prevCart.find(item => item.id === productId);
+      const productInStock = products.find(p => p.id === productId);
 
-  const updateQuantity = (productId, newQuantity) => {
-    const product = products.find(p => p.id === productId); // Use fetched products
-    if (newQuantity > product.stock) {
-      setToast({
-        message: 'Stock insuficiente',
-        type: 'error'
-      });
-      return;
-    }
-    setCart(cart.map(item =>
-      item.id === productId
-        ? { ...item, quantity: newQuantity }
-        : item
-    ));
-  };
-
-  const getTotal = () => {
-    const total = cart.reduce((total, item) => total + (item.precio * item.quantity), 0);
-    console.log('Calculated total:', total);
-    return total;
-  };
-
-  const handleCheckout = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setToast({
-          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-          type: 'error'
-        });
-        return;
+      if (productInCart && productInStock) {
+        const newQuantity = productInCart.quantity + amount;
+        if (newQuantity > productInStock.stock) {
+          setToast({
+            message: `Stock insuficiente para ${productInStock.nombre}. Disponible: ${productInStock.stock}`,
+            type: 'error'
+          });
+          return prevCart; // No update if stock is insufficient
+        }
       }
 
-      const saleDetails = cart.map(item => ({
-        productoId: item.id,
-        cantidad: item.quantity,
-        precioUnitario: item.precio
-      }));
-
-      const response = await fetch('http://localhost:8080/api/ventas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ detalles: saleDetails })
-      });
-
-      if (response.status === 401) {
-        setToast({
-          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-          type: 'error'
-        });
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al procesar la venta');
-      }
-
-      setToast({
-        message: 'Venta realizada con éxito',
-        type: 'success'
-      });
-      setCart([]);
-      fetchProducts(); // Refresh product stock after sale
-    } catch (error) {
-      setToast({
-        message: error.message,
-        type: 'error'
-      });
-    }
+      const updatedCart = prevCart.map(item =>
+        item.id === productId ? { ...item, quantity: item.quantity + amount } : item
+      ).filter(item => item.quantity > 0);
+      return updatedCart;
+    });
   };
+
+  const removeItem = (productId) => {
+    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+  };
+
+
 
   const filteredProducts = products.filter(product => {
     const matchesSearchTerm = product.nombre.toLowerCase().includes(searchTerm.toLowerCase());
@@ -218,8 +166,23 @@ const POS = () => {
     return matchesSearchTerm && matchesCategory;
   });
 
+  const handleProceedToPayment = () => {
+    setShowPaymentOptions(true);
+  };
+
+  const handleBackToCart = () => {
+    setShowPaymentOptions(false);
+  };
+
   return (
     <div className="flex h-full gap-6">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       {/* Lista de productos */}
       <div className="flex-1">
         <h1 className="text-2xl font-bold mb-6">Punto de Venta</h1>
@@ -246,7 +209,7 @@ const POS = () => {
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4 overflow-y-auto h-[calc(100vh-250px)] pr-4">
           {filteredProducts.map(product => (
             <div key={product.id} className="bg-white p-4 rounded-lg shadow">
               {product.imagenBase64 && (
@@ -261,58 +224,42 @@ const POS = () => {
               <p className="text-sm text-gray-500">Stock: {product.stock}</p>
               <button
                 onClick={() => addToCart(product)}
-                className="mt-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                className="mt-2 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
               >
-                Agregar
+                Agregar al Carrito
               </button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Carrito */}
-      <div className="w-96 bg-white p-6 rounded-lg shadow-lg h-full">
-        <h2 className="text-xl font-semibold mb-4">Carrito</h2>
-        <div className="space-y-4 mb-4">
-          {cart.map(item => (
-            <div key={item.id} className="flex justify-between items-center">
-              <div>
-                <h3 className="font-medium">{item.nombre}</h3> {/* Use item.nombre */}
-                <p className="text-gray-600">S/. {item.precio.toFixed(2)}</p> {/* Use item.precio */}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  value={item.quantity}
-                  onChange={(e) => updateQuantity(item.id, parseInt(e.target.value))}
-                  className="w-16 p-1 border rounded"
-                />
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  ❌
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="border-t pt-4">
-          <div className="flex justify-between text-xl font-semibold mb-4">
-            <span>Total:</span>
-            <span>S/. {getTotal().toFixed(2)}</span>
-          </div>
-          <button
-            onClick={handleCheckout}
-            disabled={cart.length === 0}
-            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-          >
-            Finalizar Venta
-          </button>
-        </div>
+      {/* Carrito de Compras o Opciones de Pago */}
+      <div className="w-1/3">
+        {!showPaymentOptions ? (
+          <Cart
+            cart={cart}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            onProceedToPayment={handleProceedToPayment}
+          />
+        ) : (
+          <PaymentOptions
+            cart={cart}
+            total={cart.reduce((sum, item) => sum + item.precio * item.quantity, 0)}
+            onBackToCart={handleBackToCart}
+            setCart={setCart}
+            setToast={setToast}
+          />
+        )}
       </div>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

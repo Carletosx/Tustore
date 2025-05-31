@@ -37,6 +37,8 @@ public class Venta {
     @Column(name = "total")
     private BigDecimal total;
 
+    private String metodoPago;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
