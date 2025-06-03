@@ -56,7 +56,7 @@ public class Usuario {
     @OneToMany(mappedBy = "administrador", cascade = CascadeType.ALL)
     private Set<Producto> productos = new HashSet<>();
 
-    @OneToMany(mappedBy = "administrador", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "admin", cascade = CascadeType.ALL)
     private Set<Venta> ventas = new HashSet<>();
 
     public Usuario(String username, String email, String password) {

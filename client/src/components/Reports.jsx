@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Toast from './Toast';
+import CashRegisterHistory from './CashRegisterHistory';
 
 const Reports = () => {
   const [salesData, setSalesData] = useState({
@@ -187,6 +188,8 @@ const Reports = () => {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      <CashRegisterHistory />
     </div>
   );
 };

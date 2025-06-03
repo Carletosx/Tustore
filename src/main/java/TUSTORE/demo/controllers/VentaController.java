@@ -4,10 +4,12 @@ import TUSTORE.demo.model.DetalleVenta;
 import TUSTORE.demo.model.Producto;
 import TUSTORE.demo.model.Usuario;
 import TUSTORE.demo.model.Venta;
+import TUSTORE.demo.model.Caja;
 import TUSTORE.demo.payload.request.VentaRequest;
 import TUSTORE.demo.repository.ProductoRepository;
 import TUSTORE.demo.repository.UsuarioRepository;
 import TUSTORE.demo.security.services.UserDetailsImpl;
+import TUSTORE.demo.services.CajaService;
 import TUSTORE.demo.services.VentaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,9 @@ public class VentaController {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private CajaService cajaService;
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('CASHIER')")
     public ResponseEntity<?> createVenta(@Valid @RequestBody VentaRequest ventaRequest) {
@@ -49,6 +54,11 @@ public class VentaController {
         venta.setFecha(LocalDateTime.now());
         venta.setUsuario(usuario);
         venta.setMetodoPago(ventaRequest.getMetodoPago());
+
+        // Asociar la venta a la caja abierta
+        Caja cajaAbierta = cajaService.getCajaAbierta(usuario.getId())
+                .orElseThrow(() -> new IllegalStateException("No hay una caja abierta para este usuario. Por favor, abra una caja antes de realizar ventas."));
+        venta.setCaja(cajaAbierta);
 
         Set<DetalleVenta> detallesVenta = new HashSet<>();
         BigDecimal totalVenta = BigDecimal.ZERO;

@@ -1,7 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast }) => {
+  const [showCashModal, setShowCashModal] = useState(false);
+  const [amountReceived, setAmountReceived] = useState('');
+  const [change, setChange] = useState(0);
   const handleCheckout = async (paymentMethod) => {
+    if (paymentMethod === 'Efectivo') {
+      setShowCashModal(true);
+      return;
+    }
+
     const token = localStorage.getItem('token');
     if (!token) {
       setToast({
@@ -50,6 +58,23 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast }) => {
         type: 'error'
       });
     }
+  };
+
+  const handleCashPayment = async () => {
+    const received = parseFloat(amountReceived);
+    if (isNaN(received) || received < total) {
+      setToast({
+        message: 'Monto recibido insuficiente o inválido.',
+        type: 'error'
+      });
+      return;
+    }
+    setChange(received - total);
+    // Aquí iría la lógica para registrar el pago en efectivo en el backend
+    // Por ahora, simulamos el éxito
+    await handleCheckout('Efectivo');
+    setShowCashModal(false);
+    setAmountReceived('');
   };
 
   return (
@@ -111,11 +136,48 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast }) => {
         </div>
       </div>
       <button
+        onClick={() => handleCheckout('Tarjeta')}
+        className="w-full bg-blue-500 text-white py-3 rounded-lg text-lg font-semibold hover:bg-blue-600 mt-4"
+      >
+        Finalizar Compra
+      </button>
+      <button
         onClick={onBackToCart}
-        className="w-full bg-gray-300 text-gray-800 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 mt-4"
+        className="w-full bg-gray-300 text-gray-800 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 mt-2"
       >
         Volver al Carrito
       </button>
+
+      {showCashModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl">
+            <h3 className="text-xl font-bold mb-4">Pago en Efectivo</h3>
+            <p className="mb-2">Total a pagar: S/. {total.toFixed(2)}</p>
+            <input
+              type="number"
+              placeholder="Monto recibido"
+              value={amountReceived}
+              onChange={(e) => setAmountReceived(e.target.value)}
+              className="border p-2 w-full mb-4"
+            />
+            <button
+              onClick={handleCashPayment}
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
+            >
+              Confirmar Pago
+            </button>
+            <button
+              onClick={() => setShowCashModal(false)}
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Cancelar
+            </button>
+            {change > 0 && (
+              <p className="mt-4 text-lg font-semibold">Vuelto: S/. {change.toFixed(2)}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

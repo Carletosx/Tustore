@@ -57,7 +57,7 @@ const Cart = ({ cart, updateQuantity, removeItem, onProceedToPayment }) => {
           className="w-full bg-green-600 text-white py-3 rounded-lg text-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={cart.length === 0}
         >
-          Pagar
+          Ir a Pagar
         </button>
       </div>
     </div>

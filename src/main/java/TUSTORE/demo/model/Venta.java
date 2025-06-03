@@ -2,6 +2,8 @@ package TUSTORE.demo.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,13 +27,7 @@ public class Venta {
     @Column(name = "fecha")
     private LocalDateTime fecha;
 
-    public LocalDateTime getFecha() {
-        return fecha;
-    }
 
-    public void setFecha(LocalDateTime fecha) {
-        this.fecha = fecha;
-    }
 
     @NotNull
     @Column(name = "total")
@@ -45,7 +41,11 @@ public class Venta {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_id", nullable = false)
-    private Usuario administrador;
+    private Usuario admin;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "caja_id")
+    private Caja caja;
 
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<DetalleVenta> detalles = new HashSet<>();

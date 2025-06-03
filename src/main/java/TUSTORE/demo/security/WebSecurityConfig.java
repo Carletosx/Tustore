@@ -16,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.Customizer;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -62,6 +63,7 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> 
                 auth.requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("api/test/**").permitAll()
+
                     .requestMatchers("api/productos/**").permitAll()
                     .requestMatchers("api/categorias/**").permitAll()
                     .requestMatchers("api/categorias").permitAll()
@@ -71,8 +73,13 @@ public class WebSecurityConfig {
                     .requestMatchers("/api/categorias/crear").hasRole("ADMIN")
                     .requestMatchers("/api/categorias/editar/**").hasRole("ADMIN")
                     .requestMatchers("/api/categorias/eliminar/**").hasRole("ADMIN")
+                    .requestMatchers("/api/caja/abrir").hasAnyRole("ADMIN", "CASHIER")
+                    .requestMatchers("/api/caja/cerrar").hasAnyRole("ADMIN", "CASHIER")
+
                     .anyRequest().authenticated()
             );
+        
+        http.cors(Customizer.withDefaults());
         
         http.authenticationProvider(authenticationProvider());
 

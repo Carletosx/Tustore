@@ -9,9 +9,8 @@ import java.util.List;
 
 @Repository
 public interface VentaRepository extends JpaRepository<Venta, Long> {
+    List<Venta> findByCajaId(Long cajaId);
     List<Venta> findByUsuarioId(Long usuarioId);
-    
     List<Venta> findByFechaBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
-    
     List<Venta> findByUsuarioIdAndFechaBetween(Long usuarioId, LocalDateTime fechaInicio, LocalDateTime fechaFin);
 }
