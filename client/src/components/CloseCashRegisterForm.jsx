@@ -6,9 +6,19 @@ const CloseCashRegisterForm = ({ onClose, onCloseCashRegister }) => {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [observations, setObservations] = useState('');
   const [efectivoFinal, setEfectivoFinal] = useState('');
+  const [closingDateTime, setClosingDateTime] = useState('');
 
   useEffect(() => {
     fetchSummary();
+  }, []);
+
+  useEffect(() => {
+    const updateDateTime = () => {
+      setClosingDateTime(new Date().toLocaleString());
+    };
+    updateDateTime(); // Set initial time
+    const intervalId = setInterval(updateDateTime, 1000); // Update every second
+    return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
 
   const fetchSummary = async () => {
@@ -49,7 +59,7 @@ const CloseCashRegisterForm = ({ onClose, onCloseCashRegister }) => {
         ) : summary ? (
           <div>
             <p className="mb-2"><strong>Encargado del Cierre:</strong> {summary.encargadoCierre}</p>
-            <p className="mb-2"><strong>Fecha y Hora de Cierre:</strong> {new Date().toLocaleString()}</p>
+            <p className="mb-2"><strong>Fecha y Hora de Cierre:</strong> {closingDateTime}</p>
             <p className="mb-2"><strong>Monto Inicial:</strong> S/ {summary.efectivoInicial.toFixed(2)}</p>
             <p className="mb-2"><strong>Total Recaudado del Día:</strong> S/ {summary.totalVentas.toFixed(2)}</p>
             <h3 className="text-lg font-semibold mt-4 mb-2">Desglose por Métodos de Pago:</h3>

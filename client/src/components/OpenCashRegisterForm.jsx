@@ -18,8 +18,12 @@ const OpenCashRegisterForm = ({ onOpen, onClose, currentUser }) => {
   const [openingDateTime, setOpeningDateTime] = useState('');
 
   useEffect(() => {
-    const now = new Date();
-    setOpeningDateTime(now.toISOString());
+    const updateDateTime = () => {
+      setOpeningDateTime(new Date().toISOString());
+    };
+    updateDateTime(); // Set initial time
+    const intervalId = setInterval(updateDateTime, 1000); // Update every second
+    return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
 
   const handleDenominationChange = (value, count) => {
@@ -56,10 +60,8 @@ const OpenCashRegisterForm = ({ onOpen, onClose, currentUser }) => {
             />
           </div>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">
-              Fecha y Hora de Apertura:
-            </label>
-            <p className="text-gray-700 text-sm">{openingDateTime}</p>
+            
+            <p className="mb-4"><strong>Fecha y Hora de Cierre:</strong> {new Date().toLocaleString()}</p>
           </div>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
