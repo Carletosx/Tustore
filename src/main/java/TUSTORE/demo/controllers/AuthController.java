@@ -86,7 +86,8 @@ public class AuthController {
         // Crear nueva cuenta de administrador
         Usuario usuario = new Usuario(signUpRequest.getUsername(),
                                  signUpRequest.getEmail(),
-                                 encoder.encode(signUpRequest.getPassword()));
+                                 encoder.encode(signUpRequest.getPassword()),
+                                 signUpRequest.getNombreNegocio());
 
         // Asignar rol de administrador
         Set<Rol> roles = new HashSet<>();

@@ -18,7 +18,7 @@ public class ProductoMapper {
         dto.setDescripcion(producto.getDescripcion());
         dto.setPrecio(producto.getPrecio());
         dto.setStock(producto.getStock());
-        // imagenBase64 will be set in the controller
+        
 
         if (producto.getCategoria() != null) {
             dto.setCategoria(new CategoriaDto(producto.getCategoria().getId(), producto.getCategoria().getNombre()));
@@ -26,19 +26,4 @@ public class ProductoMapper {
         return dto;
     }
 
-    // You might need a toEntity method if you are mapping DTOs back to entities for updates
-    // public Producto toEntity(ProductoDto dto) {
-    //     if (dto == null) {
-    //         return null;
-    //     }
-    //     Producto producto = new Producto();
-    //     producto.setId(dto.getId());
-    //     producto.setNombre(dto.getNombre());
-    //     producto.setDescripcion(dto.getDescripcion());
-    //     producto.setPrecio(dto.getPrecio());
-    //     producto.setStock(dto.getStock());
-    //     // Handle imagen (byte[]) if needed
-    //     // Handle categoria (Categoria entity) if needed
-    //     return producto;
-    // }
 }

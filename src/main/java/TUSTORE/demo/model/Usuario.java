@@ -64,4 +64,11 @@ public class Usuario {
         this.email = email;
         this.password = password;
     }
+
+    public Usuario(String username, String email, String password, String nombreNegocio) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.nombreNegocio = nombreNegocio;
+    }
 }

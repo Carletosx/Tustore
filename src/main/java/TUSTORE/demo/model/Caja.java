@@ -50,6 +50,9 @@ public class Caja {
     @Column(name = "observaciones", length = 500)
     private String observaciones;
 
+    @Column(name = "encargado_cierre")
+    private String encargadoCierre;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false)
     private EstadoCaja estado;

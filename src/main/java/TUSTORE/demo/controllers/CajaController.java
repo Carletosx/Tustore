@@ -55,7 +55,7 @@ public class CajaController {
 
         System.out.println("Received request to close cash register for user: " + usuario.getUsername());
         try {
-            Caja caja = cajaService.cerrarCaja(usuario, request.getEfectivoFinal(), request.getObservaciones());
+            Caja caja = cajaService.cerrarCaja(usuario, request.getEfectivoFinal(), request.getObservaciones(), request.getEncargadoCierre());
             return ResponseEntity.ok(new MessageResponse("Caja cerrada con éxito. ID: " + caja.getId()));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));

@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public class CajaCierreRequest {
     private BigDecimal efectivoFinal;
     private String observaciones;
+    private String encargadoCierre;
 
 
 }

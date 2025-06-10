@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 
-const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast }) => {
-  const [showCashModal, setShowCashModal] = useState(false);
-  const [amountReceived, setAmountReceived] = useState('');
-  const [change, setChange] = useState(0);
+const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowCashModal }) => {
   const handleCheckout = async (paymentMethod) => {
+    console.log('handleCheckout called with:', paymentMethod);
     if (paymentMethod === 'Efectivo') {
-      setShowCashModal(true);
+      console.log('Calling onShowCashModal');
+      onShowCashModal();
       return;
     }
 
@@ -61,20 +60,7 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast }) => {
   };
 
   const handleCashPayment = async () => {
-    const received = parseFloat(amountReceived);
-    if (isNaN(received) || received < total) {
-      setToast({
-        message: 'Monto recibido insuficiente o inválido.',
-        type: 'error'
-      });
-      return;
-    }
-    setChange(received - total);
-    // Aquí iría la lógica para registrar el pago en efectivo en el backend
-    // Por ahora, simulamos el éxito
-    await handleCheckout('Efectivo');
-    setShowCashModal(false);
-    setAmountReceived('');
+    // This function is now handled in POS.jsx
   };
 
   return (
@@ -147,37 +133,6 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast }) => {
       >
         Volver al Carrito
       </button>
-
-      {showCashModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
-          <div className="bg-white p-8 rounded-lg shadow-xl">
-            <h3 className="text-xl font-bold mb-4">Pago en Efectivo</h3>
-            <p className="mb-2">Total a pagar: S/. {total.toFixed(2)}</p>
-            <input
-              type="number"
-              placeholder="Monto recibido"
-              value={amountReceived}
-              onChange={(e) => setAmountReceived(e.target.value)}
-              className="border p-2 w-full mb-4"
-            />
-            <button
-              onClick={handleCashPayment}
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
-            >
-              Confirmar Pago
-            </button>
-            <button
-              onClick={() => setShowCashModal(false)}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Cancelar
-            </button>
-            {change > 0 && (
-              <p className="mt-4 text-lg font-semibold">Vuelto: S/. {change.toFixed(2)}</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -16,6 +16,9 @@ const POS = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [showCashModal, setShowCashModal] = useState(false);
+  const [amountReceived, setAmountReceived] = useState('');
+  const [change, setChange] = useState(0);
   const [showOpenCashRegisterForm, setShowOpenCashRegisterForm] = useState(false);
   const [showCloseCashRegisterForm, setShowCloseCashRegisterForm] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
@@ -86,9 +89,9 @@ const POS = () => {
     }
   };
 
-  const handleCloseCashRegister = async (efectivoFinal, observations) => {
+  const handleCloseCashRegister = async (efectivoFinal, observations, closingManager) => {
     setLoadingCashRegister(true);
-    console.log('Sending close cash register request with:', { efectivoFinal, observations });
+    console.log('Sending close cash register request with:', { efectivoFinal, observations, closingManager });
     try {
       const token = localStorage.getItem('token');
       console.log('Retrieved token:', token); // Add this line
@@ -101,7 +104,8 @@ const POS = () => {
       console.log('Token found, proceeding with API call.');
       const response = await axios.post('http://localhost:8080/api/caja/cerrar', {
         efectivoFinal: efectivoFinal,
-        observaciones: observations
+        observaciones: observations,
+        encargadoCierre: closingManager
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -215,6 +219,13 @@ const POS = () => {
       });
       return;
     }
+    if (showPaymentOptions) {
+      setToast({
+        message: 'No se pueden añadir productos mientras se procesa el pago. Vuelve al carrito para editarlo.',
+        type: 'error'
+      });
+      return;
+    }
     setCart(prevCart => {
       const existingProduct = prevCart.find(item => item.id === product.id);
       if (existingProduct) {
@@ -284,7 +295,7 @@ const POS = () => {
     setShowPaymentOptions(false);
   };
 
-  const handleProcessPayment = async (paymentMethod, amountPaid) => {
+  const handleProcessPayment = async (method, amountReceived = 0, change = 0) => {
     if (cashRegisterStatus !== 'ABIERTA') {
       setToast({
         message: 'La caja no está abierta. Por favor, abra la caja primero para procesar pagos.',
@@ -292,15 +303,30 @@ const POS = () => {
       });
       return;
     }
+
+    if (cart.length === 0) {
+      setToast({
+        message: 'El carrito está vacío. Agregue productos antes de procesar el pago.',
+        type: 'error'
+      });
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setToast({ message: 'No se encontró el token de autenticación. Por favor, inicie sesión.', type: 'error' });
+        return;
+      }
       const response = await axios.post('http://localhost:8080/api/ventas', {
         productos: cart.map(item => ({
           id: item.id,
           cantidad: item.quantity
         })),
-        metodoPago: paymentMethod,
-        total: calculateTotal()
+        metodoPago: method,
+        total: calculateTotal(),
+        montoRecibido: method === 'Efectivo' ? amountReceived : null,
+        vuelto: method === 'Efectivo' ? change : null
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -309,6 +335,9 @@ const POS = () => {
       setToast({ message: response.data.message, type: 'success' });
       setCart([]);
       setShowPaymentOptions(false);
+      if (method === 'Efectivo') {
+        setShowCashModal(false);
+      }
       fetchProducts(selectedCategory); // Refresh product list to update stock
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -386,20 +415,30 @@ const POS = () => {
           </div>
         </div>
       </div>
-      <Cart
-        cart={cart}
-        updateQuantity={updateQuantity}
-        removeItem={removeItem}
-        calculateTotal={calculateTotal}
-        handleProceedToPayment={handleProceedToPayment}
-      />
-      {showPaymentOptions && (
-        <PaymentOptions
-          total={calculateTotal()}
-          onPaymentSuccess={handlePaymentSuccess}
-          onBackToCart={handleBackToCart}
-        />
-      )}
+      <div className="relative w-1/3 overflow-hidden">
+        <div className={`flex transition-transform duration-300 ease-in-out ${showPaymentOptions ? '-translate-x-full' : 'translate-x-0'}`}>
+          <div className="w-full flex-shrink-0">
+            <Cart
+              cart={cart}
+              updateQuantity={updateQuantity}
+              removeItem={removeItem}
+              calculateTotal={calculateTotal}
+              onProceedToPayment={handleProceedToPayment}
+            />
+          </div>
+          <div className="w-full flex-shrink-0">
+            <PaymentOptions
+            cart={cart}
+            total={calculateTotal()}
+            onBackToCart={() => setShowPaymentOptions(false)}
+            setCart={setCart}
+            setToast={setToast}
+            onShowCashModal={() => setShowCashModal(true)}
+            onPaymentSuccess={handleProcessPayment}
+          />
+          </div>
+        </div>
+      </div>
       {showOpenCashRegisterForm && (
         <OpenCashRegisterForm
           onOpen={handleOpenCashRegister}
@@ -413,6 +452,49 @@ const POS = () => {
           onClose={() => setShowCloseCashRegisterForm(false)}
           onCloseCashRegister={handleCloseCashRegister}
         />
+      )}
+
+      {/* Cash Payment Modal (moved from PaymentOptions.jsx) */}
+      {showCashModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl">
+            <h3 className="text-xl font-bold mb-4">Pago en Efectivo</h3>
+            <p className="mb-2">Total a pagar: S/. {calculateTotal().toFixed(2)}</p>
+            <input
+              type="number"
+              placeholder="Monto recibido"
+              value={amountReceived}
+              onChange={(e) => {
+                const received = parseFloat(e.target.value);
+                setAmountReceived(e.target.value);
+                if (!isNaN(received) && received >= calculateTotal()) {
+                  setChange(received - calculateTotal());
+                } else {
+                  setChange(0);
+                }
+              }}
+              className="border p-2 w-full mb-4 text-center text-lg"
+            />
+            {amountReceived && parseFloat(amountReceived) > 0 && (
+              <p className="mb-2 text-lg font-semibold">Monto Recibido: S/. {parseFloat(amountReceived).toFixed(2)}</p>
+            )}
+            {change > 0 && (
+              <p className="mb-4 text-lg font-semibold">Vuelto: S/. {change.toFixed(2)}</p>
+            )}
+            <button
+              onClick={() => handleProcessPayment('Efectivo', parseFloat(amountReceived), change)}
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
+            >
+              Confirmar Pago
+            </button>
+            <button
+              onClick={() => setShowCashModal(false)}
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
 

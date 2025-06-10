@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { FaTrash } from 'react-icons/fa';
 
 const Cart = ({ cart, updateQuantity, removeItem, onProceedToPayment }) => {
-
   const total = cart.reduce((sum, item) => sum + item.precio * item.quantity, 0);
 
   return (

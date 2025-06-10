@@ -12,7 +12,7 @@ const Toast = ({ message, type = 'success', duration = 3000, onClose }) => {
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const baseStyles = "fixed top-4 right-4 p-4 rounded-lg shadow-lg max-w-sm w-full transition-opacity duration-300";
+  const baseStyles = "fixed top-4 right-4 p-4 rounded-lg shadow-lg max-w-sm w-full transition-opacity duration-300 z-50";
   const typeStyles = {
     success: "bg-green-500 text-white",
     error: "bg-red-500 text-white",

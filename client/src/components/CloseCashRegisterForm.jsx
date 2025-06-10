@@ -6,6 +6,7 @@ const CloseCashRegisterForm = ({ onClose, onCloseCashRegister }) => {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [observations, setObservations] = useState('');
   const [efectivoFinal, setEfectivoFinal] = useState('');
+  const [closingManager, setClosingManager] = useState('');
   const [closingDateTime, setClosingDateTime] = useState('');
 
   useEffect(() => {
@@ -46,8 +47,8 @@ const CloseCashRegisterForm = ({ onClose, onCloseCashRegister }) => {
       alert('Por favor, ingrese un monto final válido.');
       return;
     }
-    console.log('Attempting to close cash register with:', { efectivoFinal: finalAmount, observations });
-    onCloseCashRegister(finalAmount, observations);
+    console.log('Attempting to close cash register with:', { efectivoFinal: finalAmount, observations, closingManager });
+    onCloseCashRegister(finalAmount, observations, closingManager);
   };
 
   return (
@@ -58,7 +59,6 @@ const CloseCashRegisterForm = ({ onClose, onCloseCashRegister }) => {
           <p>Cargando resumen de caja...</p>
         ) : summary ? (
           <div>
-            <p className="mb-2"><strong>Encargado del Cierre:</strong> {summary.encargadoCierre}</p>
             <p className="mb-2"><strong>Fecha y Hora de Cierre:</strong> {closingDateTime}</p>
             <p className="mb-2"><strong>Monto Inicial:</strong> S/ {summary.efectivoInicial.toFixed(2)}</p>
             <p className="mb-2"><strong>Total Recaudado del Día:</strong> S/ {summary.totalVentas.toFixed(2)}</p>
@@ -80,6 +80,19 @@ const CloseCashRegisterForm = ({ onClose, onCloseCashRegister }) => {
                 onChange={(e) => setEfectivoFinal(e.target.value)}
                 required
                 step="0.01"
+              />
+            </div>
+            <div className="mb-4 mt-4">
+              <label htmlFor="closingManager" className="block text-gray-700 text-sm font-bold mb-2">
+                Encargado del Cierre:
+              </label>
+              <input
+                type="text"
+                id="closingManager"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={closingManager}
+                onChange={(e) => setClosingManager(e.target.value)}
+                required
               />
             </div>
             <div className="mb-4 mt-4">

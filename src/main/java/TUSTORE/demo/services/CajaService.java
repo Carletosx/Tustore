@@ -43,7 +43,7 @@ public class CajaService {
     }
 
     @Transactional
-    public Caja cerrarCaja(Usuario usuario, BigDecimal efectivoFinal, String observaciones) {
+    public Caja cerrarCaja(Usuario usuario, BigDecimal efectivoFinal, String observaciones, String encargadoCierre) {
         Caja caja = cajaRepository.findByUsuarioAndEstado(usuario, Caja.EstadoCaja.ABIERTA)
                  .orElseThrow(() -> new IllegalStateException("No hay caja abierta para este usuario."));
 
@@ -57,6 +57,7 @@ public class CajaService {
         caja.setTotalVentas(totalVentas);
         caja.setEstado(Caja.EstadoCaja.CERRADA);
         caja.setObservaciones(observaciones);
+        caja.setEncargadoCierre(encargadoCierre);
         System.out.println("Caja antes de guardar: " + caja.getId() + ", Estado: " + caja.getEstado() + ", Efectivo Final: " + caja.getEfectivoFinal());
         Caja cajaGuardada = cajaRepository.save(caja);
         System.out.println("Caja guardada: " + cajaGuardada.getId() + ", Estado: " + cajaGuardada.getEstado());
