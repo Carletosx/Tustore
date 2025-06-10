@@ -2,14 +2,16 @@ package TUSTORE.demo.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -22,27 +24,35 @@ public class Venta {
     private Long id;
 
     @NotNull
-    @Column(name = "fecha_venta")
-    private LocalDateTime fechaVenta;
+    @Column(name = "fecha")
+    private LocalDateTime fecha;
 
-    public LocalDateTime getFecha() {
-        return fechaVenta;
-    }
+
 
     @NotNull
     @Column(name = "total")
     private BigDecimal total;
 
+    private String metodoPago;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_id", nullable = false)
+    private Usuario admin;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "caja_id")
+    private Caja caja;
+
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<DetalleVenta> detalles = new ArrayList<>();
+    private Set<DetalleVenta> detalles = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
-        fechaVenta = LocalDateTime.now();
+        fecha = LocalDateTime.now();
     }
 
     public void calcularTotal() {

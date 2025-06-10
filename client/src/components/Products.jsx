@@ -7,15 +7,112 @@ const Products = () => {
   const [toast, setToast] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
+    nombre: '',
+    descripcion: '',
+    precio: '',
     stock: '',
-    categoria: ''
+    categoria: '',
+    imagen: ''
   });
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      fetchProducts();
+    }
+  }, [categories]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      const url = editingProduct
+        ? `http://localhost:8080/api/productos/${editingProduct.id}`
+        : 'http://localhost:8080/api/productos';
+      
+      const method = editingProduct ? 'PUT' : 'POST';
+      
+      const productoData = {
+        ...formData,
+        precio: parseFloat(formData.precio),
+        stock: parseInt(formData.stock),
+        categoriaId: parseInt(formData.categoria),
+        imagenBase64: formData.imagenBase64 // Include imagenBase64 in the request body
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(productoData)
+      });
+
+      if (response.status === 401) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Error al ${editingProduct ? 'actualizar' : 'crear'} el producto`);
+      }
+
+      setToast({
+        message: `Producto ${editingProduct ? 'actualizado' : 'creado'} exitosamente`,
+        type: 'success'
+      });
+      fetchProducts();
+      resetForm();
+    } catch (error) {
+      setToast({
+        message: error.message,
+        type: 'error'
+      });
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (e.g., 5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5 MB in bytes
+      if (file.size > maxSize) {
+        setToast({
+          message: 'La imagen es demasiado grande. El tamaño máximo permitido es 5MB.',
+          type: 'error'
+        });
+        e.target.value = null; // Clear the input
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Extract Base64 string from Data URL
+        const base64String = reader.result.split(',')[1];
+        setFormData(prev => ({ ...prev, imagenBase64: base64String }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const [categoryFormData, setCategoryFormData] = useState({
     nombre: '',
-    description: ''
+    descripcion: ''
   });
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -27,16 +124,35 @@ const Products = () => {
 
   const fetchCategories = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
       const response = await fetch('http://localhost:8080/api/categorias', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
+
+      if (response.status === 401) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         setCategories(Array.isArray(data) ? data : []);
       } else {
-        throw new Error('Error al cargar categorías');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al cargar categorías');
       }
     } catch (error) {
       setToast({
@@ -50,6 +166,25 @@ const Products = () => {
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user'));
+
+      if (!token) {
+        setToast({
+          message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (!user || !user.roles.includes('ROLE_ADMIN')) {
+        setToast({
+          message: 'No tiene permisos de administrador para realizar esta acción.',
+          type: 'error'
+        });
+        return;
+      }
+
       const url = editingCategory
         ? `http://localhost:8080/api/categorias/${editingCategory.id}`
         : 'http://localhost:8080/api/categorias';
@@ -60,24 +195,35 @@ const Products = () => {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(categoryFormData)
       });
 
-      if (response.ok) {
+      if (response.status === 401) {
         setToast({
-          message: `Categoría ${editingCategory ? 'actualizada' : 'creada'} exitosamente`,
-          type: 'success'
+          message: 'No autorizado. Verifique sus permisos o inicie sesión nuevamente.',
+          type: 'error'
         });
-        fetchCategories();
-        resetCategoryForm();
-      } else {
-        throw new Error(`Error al ${editingCategory ? 'actualizar' : 'crear'} la categoría`);
+        return;
       }
-    } catch (error) {
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al procesar la categoría');
+      }
+
       setToast({
-        message: error.message,
+        message: editingCategory ? 'Categoría actualizada con éxito' : 'Categoría creada con éxito',
+        type: 'success'
+      });
+      setCategoryFormData({ nombre: '', descripcion: '' });
+      setEditingCategory(null);
+      fetchCategories();
+    } catch (error) {
+      console.error('Error al procesar la categoría:', error);
+      setToast({
+        message: error.message || 'Error al procesar la categoría',
         type: 'error'
       });
     }
@@ -115,14 +261,14 @@ const Products = () => {
     setEditingCategory(category);
     setCategoryFormData({
       nombre: category.nombre,
-      description: category.description
+      descripcion: category.descripcion
     });
   };
 
   const resetCategoryForm = () => {
     setCategoryFormData({
       nombre: '',
-      description: ''
+      descripcion: ''
     });
     setEditingCategory(null);
   };
@@ -136,7 +282,11 @@ const Products = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setProducts(Array.isArray(data) ? data : []);
+        setProducts(Array.isArray(data) ? data.map(product => ({
+          ...product,
+          precio: parseFloat(product.precio),
+          // Removed the line that was incorrectly mapping the category
+        })) : []);
       } else {
         throw new Error('Error al cargar productos');
       }
@@ -146,42 +296,6 @@ const Products = () => {
         type: 'error'
       });
       setProducts([]);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const url = editingProduct
-        ? `http://localhost:8080/api/productos/${editingProduct.id}`
-        : 'http://localhost:8080/api/productos';
-      
-      const method = editingProduct ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        setToast({
-          message: `Producto ${editingProduct ? 'actualizado' : 'creado'} exitosamente`,
-          type: 'success'
-        });
-        fetchProducts();
-        resetForm();
-      } else {
-        throw new Error(`Error al ${editingProduct ? 'actualizar' : 'crear'} el producto`);
-      }
-    } catch (error) {
-      setToast({
-        message: error.message,
-        type: 'error'
-      });
     }
   };
 
@@ -216,27 +330,30 @@ const Products = () => {
   const handleEdit = (product) => {
     setEditingProduct(product);
     setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
+      nombre: product.nombre,
+      descripcion: product.descripcion,
+      precio: product.precio,
       stock: product.stock,
-      categoria: product.categoria
+      categoria: product.categoria?.id || '',
+      imagen: product.imagenBase64 || '' // Use imagenBase64 for editing
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      description: '',
-      price: '',
+      nombre: '',
+      descripcion: '',
+      precio: '',
       stock: '',
-      categoria: ''
+      categoria: '',
+      imagen: ''
     });
     setEditingProduct(null);
   };
 
   const filteredProducts = products.filter(product =>
-    product && product.name ? product.name.toLowerCase().includes(searchTerm.toLowerCase()) : false
+    product && product.nombre ? product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) : false
   );
 
   return (
@@ -256,7 +373,7 @@ const Products = () => {
                 type="text"
                 value={categoryFormData.nombre}
                 onChange={(e) => setCategoryFormData({...categoryFormData, nombre: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               />
             </div>
@@ -264,9 +381,9 @@ const Products = () => {
               <label className="block text-sm font-medium text-gray-700">Descripción</label>
               <input
                 type="text"
-                value={categoryFormData.description}
-                onChange={(e) => setCategoryFormData({...categoryFormData, description: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={categoryFormData.descripcion}
+                onChange={(e) => setCategoryFormData({...categoryFormData, descripcion: e.target.value})}
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -306,7 +423,7 @@ const Products = () => {
               {categories.map((category) => (
                 <tr key={category.id}>
                   <td className="px-6 py-4 whitespace-nowrap">{category.nombre}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{category.description}</td>
+                  <td className="px-6 py-4 whitespace-normal max-w-md">{category.descripcion}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEditCategory(category)}
@@ -339,9 +456,9 @@ const Products = () => {
               <label className="block text-sm font-medium text-gray-700">Nombre</label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.nombre}
+                onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               />
             </div>
@@ -349,18 +466,39 @@ const Products = () => {
               <label className="block text-sm font-medium text-gray-700">Descripción</label>
               <input
                 type="text"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Imagen</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="mt-1 block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-full file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
+              {formData.imagen && (
+                <img
+                  src={formData.imagen}
+                  alt="Vista previa"
+                  className="mt-2 h-20 w-20 object-cover rounded-lg"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Precio</label>
               <input
                 type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({...formData, price: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.precio}
+                onChange={(e) => setFormData({...formData, precio: parseFloat(e.target.value)})}
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
                 min="0"
                 step="0.01"
@@ -372,7 +510,7 @@ const Products = () => {
                 type="number"
                 value={formData.stock}
                 onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
                 min="0"
               />
@@ -382,13 +520,13 @@ const Products = () => {
               <select
                 value={formData.categoria}
                 onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-55 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               >
                 <option value="">Seleccione una categoría</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.name}
+                    {category.nombre}
                   </option>
                 ))}
               </select>
@@ -423,7 +561,7 @@ const Products = () => {
             placeholder="Buscar productos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         <div className="overflow-x-auto">
@@ -435,18 +573,24 @@ const Products = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProducts.map((product) => (
                 <tr key={product.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{product.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">${product.price}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{product.nombre}</td>
+                  <td className="px-6 py-4 whitespace-normal max-w-md">{product.descripcion}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">S/. {product.precio}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {categories.find(cat => cat.id === product.categoria)?.name || product.categoria}
+                    {product.categoria?.nombre || 'Sin categoría'}
+                  </td>
+                  <td className="py-2 px-4 border-b">
+                    {product.imagenBase64 && (
+                      <img src={`data:image/jpeg;base64,${product.imagenBase64}`} alt={product.nombre} style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
