@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Toast from './Toast';
+import SuccessModal from './SuccessModal';
 import Cart from './Cart';
 import PaymentOptions from './PaymentOptions';
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
+import BoletaPDF from './BoletaPDF';
 import OpenCashRegisterForm from './OpenCashRegisterForm';
 import CloseCashRegisterForm from './CloseCashRegisterForm';
 
@@ -11,14 +14,16 @@ const POS = () => {
   const [loadingCashRegister, setLoadingCashRegister] = useState(true);
   const [cart, setCart] = useState([]);
   const [products, setProducts] = useState([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [toast, setToast] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
-  const [showCashModal, setShowCashModal] = useState(false);
-  const [amountReceived, setAmountReceived] = useState('');
-  const [change, setChange] = useState(0);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceiptType, setSelectedReceiptType] = useState(null);
+
   const [showOpenCashRegisterForm, setShowOpenCashRegisterForm] = useState(false);
   const [showCloseCashRegisterForm, setShowCloseCashRegisterForm] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
@@ -318,11 +323,16 @@ const POS = () => {
         setToast({ message: 'No se encontró el token de autenticación. Por favor, inicie sesión.', type: 'error' });
         return;
       }
+      const productosToSend = cart.map(item => ({
+        productoId: item.id,
+        cantidad: item.quantity,
+        precioUnitario: item.price
+      }));
+
+      console.log('Productos being sent:', productosToSend);
+
       const response = await axios.post('http://localhost:8080/api/ventas', {
-        productos: cart.map(item => ({
-          id: item.id,
-          cantidad: item.quantity
-        })),
+        detalles: productosToSend,
         metodoPago: method,
         total: calculateTotal(),
         montoRecibido: method === 'Efectivo' ? amountReceived : null,
@@ -332,7 +342,8 @@ const POS = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      setToast({ message: response.data.message, type: 'success' });
+      setSuccessMessage(response.data.message);
+      setShowSuccessModal(true);
       setCart([]);
       setShowPaymentOptions(false);
       if (method === 'Efectivo') {
@@ -348,6 +359,11 @@ const POS = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <SuccessModal
+        show={showSuccessModal}
+        message={successMessage}
+        onClose={() => setShowSuccessModal(false)}
+      />
       <div className="flex-1 flex flex-col">
         <header className="bg-white shadow p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Punto de Venta</h1>
@@ -433,8 +449,8 @@ const POS = () => {
             onBackToCart={() => setShowPaymentOptions(false)}
             setCart={setCart}
             setToast={setToast}
-            onShowCashModal={() => setShowCashModal(true)}
             onPaymentSuccess={handleProcessPayment}
+            onShowReceiptModal={setShowReceiptModal}
           />
           </div>
         </div>
@@ -455,49 +471,65 @@ const POS = () => {
       )}
 
       {/* Cash Payment Modal (moved from PaymentOptions.jsx) */}
-      {showCashModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl">
-            <h3 className="text-xl font-bold mb-4">Pago en Efectivo</h3>
-            <p className="mb-2">Total a pagar: S/. {calculateTotal().toFixed(2)}</p>
-            <input
-              type="number"
-              placeholder="Monto recibido"
-              value={amountReceived}
-              onChange={(e) => {
-                const received = parseFloat(e.target.value);
-                setAmountReceived(e.target.value);
-                if (!isNaN(received) && received >= calculateTotal()) {
-                  setChange(received - calculateTotal());
-                } else {
-                  setChange(0);
-                }
-              }}
-              className="border p-2 w-full mb-4 text-center text-lg"
-            />
-            {amountReceived && parseFloat(amountReceived) > 0 && (
-              <p className="mb-2 text-lg font-semibold">Monto Recibido: S/. {parseFloat(amountReceived).toFixed(2)}</p>
-            )}
-            {change > 0 && (
-              <p className="mb-4 text-lg font-semibold">Vuelto: S/. {change.toFixed(2)}</p>
-            )}
-            <button
-              onClick={() => handleProcessPayment('Efectivo', parseFloat(amountReceived), change)}
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
-            >
-              Confirmar Pago
-            </button>
-            <button
-              onClick={() => setShowCashModal(false)}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Cancelar
-            </button>
+      {showReceiptModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-11/12 md:w-1/3">
+            <h3 className="text-2xl font-bold mb-6 text-center">Seleccione Tipo de Comprobante</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <button
+                onClick={() => setSelectedReceiptType('Boleta')}
+                className={`py-4 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${selectedReceiptType === 'Boleta' ? 'bg-blue-500 text-white ring-2 ring-blue-500 shadow-lg' : 'bg-blue-200 text-blue-800 hover:bg-blue-300 hover:shadow-md'}`}
+               >
+                 Boleta
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedReceiptType('Factura');
+                  setToast({
+                    message: 'Funcionalidad de Factura no implementada aún.',
+                    type: 'info'
+                  });
+                }}
+                className={`py-4 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${selectedReceiptType === 'Factura' ? 'bg-blue-500 text-white ring-2 ring-blue-500 shadow-lg' : 'bg-blue-200 text-blue-800 hover:bg-blue-300 hover:shadow-md'}`}
+                >
+                  Factura (Próximamente)
+              </button>
+            </div>
+            <div className="flex justify-between mt-6">
+              <button
+                onClick={() => setShowReceiptModal(false)}
+                className="bg-red-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 hover:bg-red-600 hover:shadow-md"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  await handleProcessPayment('Efectivo');
+                  if (selectedReceiptType === 'Boleta') {
+                    const link = document.createElement('a');
+                    const blob = await pdf(<BoletaPDF cart={cart} total={calculateTotal()} />).toBlob();
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'boleta.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setSuccessMessage('Boleta generada y descargada correctamente!');
+                  } else {
+                    setSuccessMessage('Compra realizada con éxito!');
+                  }
+                  setShowSuccessModal(true);
+                  setShowReceiptModal(false);
+                  setSelectedReceiptType(null);
+                }}
+                className={`bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${!selectedReceiptType ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600 hover:shadow-md'}`}
+                disabled={!selectedReceiptType}
+              >
+                Finalizar Compra
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-
     </div>
   );
 };

@@ -1,66 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowCashModal }) => {
-  const handleCheckout = async (paymentMethod) => {
-    console.log('handleCheckout called with:', paymentMethod);
-    if (paymentMethod === 'Efectivo') {
-      console.log('Calling onShowCashModal');
-      onShowCashModal();
-      return;
-    }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setToast({
-        message: 'Sesión expirada. Por favor, inicie sesión nuevamente.',
-        type: 'error'
-      });
-      return;
-    }
+const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowReceiptModal }) => {
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [amountReceived, setAmountReceived] = useState('');
+  const [change, setChange] = useState(0);
+  const [showCashInput, setShowCashInput] = useState(false);
 
-    const ventaRequest = {
-      detallesVenta: cart.map(item => ({
-        productoId: item.id,
-        cantidad: item.quantity,
-        precioUnitario: item.precio
-      })),
-      metodoPago: paymentMethod
-    };
 
-    try {
-      const response = await fetch('http://localhost:8080/api/ventas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(ventaRequest)
-      });
-
-      if (response.ok) {
-        setToast({
-          message: 'Venta realizada con éxito!',
-          type: 'success'
-        });
-        setCart([]); // Clear the cart after successful sale
-        onBackToCart(); // Go back to the cart view
+  useEffect(() => {
+    if (selectedPaymentMethod === 'Efectivo' && amountReceived !== '') {
+      const received = parseFloat(amountReceived);
+      if (!isNaN(received)) {
+        setChange(received - total);
       } else {
-        const errorData = await response.json();
-        setToast({
-          message: errorData.message || 'Error al procesar la venta.',
-          type: 'error'
-        });
+        setChange(0);
       }
-    } catch (error) {
-      setToast({
-        message: 'Error de red o servidor no disponible.',
-        type: 'error'
-      });
+    } else {
+      setChange(0);
     }
+  }, [amountReceived, total, selectedPaymentMethod]);
+
+
+  const handleCheckout = async (paymentMethod) => {
+    setSelectedPaymentMethod(paymentMethod);
+    if (paymentMethod === 'Efectivo') {
+      setShowCashInput(true);
+      return;
+    }
+    onPaymentSuccess(paymentMethod);
   };
 
-  const handleCashPayment = async () => {
-    // This function is now handled in POS.jsx
+  const handleProcessCashPayment = async () => {
+    if (parseFloat(amountReceived) < total) {
+      setToast({
+        message: 'El monto recibido es insuficiente.',
+        type: 'error'
+      });
+      return;
+    }
+    // Open modal to select receipt type
+    onShowReceiptModal(true);
   };
 
   return (
@@ -81,58 +61,108 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowCa
               </div>
             ))
           )}
+
+
+
+
         </div>
         <div className="flex justify-between items-center mb-4">
           <span className="text-xl font-bold">Total:</span>
           <span className="text-xl font-bold">S/. {total.toFixed(2)}</span>
         </div>
       </div>
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Selecciona el método de pago*</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <button
-            onClick={() => handleCheckout('Efectivo')}
-            className="flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-          >
-            <img src="/icons/efectivo.svg" alt="Efectivo" className="w-12 h-12 mb-2" />
-            <span>Efectivo</span>
-          </button>
-          <button
-            onClick={() => handleCheckout('Tarjeta')}
-            className="flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-          >
-            <img src="/icons/tarjeta.svg" alt="Tarjeta" className="w-12 h-12 mb-2" />
-            <span>Tarjeta</span>
-          </button>
+      {!showCashInput ? (
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Selecciona el método de pago*</h2>
+          <div className="grid grid-cols-3 gap-4">
+            <button
+              onClick={() => handleCheckout('Efectivo')}
+              className={`flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 ${selectedPaymentMethod === 'Efectivo' ? 'border-blue-500 ring-2 ring-blue-500' : ''}`}
+            >
+              <img src="/icons/efectivo.svg" alt="Efectivo" className="w-12 h-12 mb-2" />
+              <span>Efectivo</span>
+            </button>
+            <button
+              onClick={() => handleCheckout('Tarjeta')}
+              className={`flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 ${selectedPaymentMethod === 'Tarjeta' ? 'border-blue-500 ring-2 ring-blue-500' : ''}`}
+            >
+              <img src="/icons/tarjeta.svg" alt="Tarjeta" className="w-12 h-12 mb-2" />
+              <span>Tarjeta</span>
+            </button>
 
+            <button
+              onClick={() => handleCheckout('Plin')}
+              className={`flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 ${selectedPaymentMethod === 'Plin' ? 'border-blue-500 ring-2 ring-blue-500' : ''}`}
+            >
+              <img src="/icons/plin.png" alt="Plin" className="w-12 h-12 mb-2" />
+              <span>Plin</span>
+            </button>
+            <button
+              onClick={() => handleCheckout('Yape')}
+              className={`flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 ${selectedPaymentMethod === 'Yape' ? 'border-blue-500 ring-2 ring-blue-500' : ''}`}
+            >
+              <img src="/icons/yape.png" alt="Yape" className="w-12 h-12 mb-2" />
+              <span>Yape</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+          <h3 className="text-xl font-bold mb-3">Pago en Efectivo</h3>
+          <div className="mb-3">
+            <label htmlFor="amountReceived" className="block text-sm font-medium text-gray-700">Monto Recibido (S/.)</label>
+            <input
+              type="number"
+              id="amountReceived"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              value={amountReceived}
+              onChange={(e) => setAmountReceived(e.target.value)}
+              placeholder="Ingrese el monto recibido"
+              step="0.01"
+            />
+          </div>
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-lg font-semibold">Vuelto:</span>
+            <span className="text-lg font-bold">S/. {change.toFixed(2)}</span>
+          </div>
           <button
-            onClick={() => handleCheckout('Plin')}
-            className="flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            onClick={handleProcessCashPayment}
+            className="w-full bg-green-500 text-white py-3 rounded-lg text-lg font-semibold hover:bg-green-600"
           >
-            <img src="/icons/plin.png" alt="Plin" className="w-12 h-12 mb-2" />
-            <span>Plin</span>
+            Confirmar Pago en Efectivo
           </button>
           <button
-            onClick={() => handleCheckout('Yape')}
-            className="flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            onClick={() => { setShowCashInput(false); setSelectedPaymentMethod(null); setAmountReceived(''); setChange(0); }}
+            className="w-full bg-gray-300 text-gray-800 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 mt-2"
           >
-            <img src="/icons/yape.png" alt="Yape" className="w-12 h-12 mb-2" />
-            <span>Yape</span>
+            Volver a Métodos de Pago
           </button>
         </div>
-      </div>
-      <button
-        onClick={() => handleCheckout('Tarjeta')}
-        className="w-full bg-blue-500 text-white py-3 rounded-lg text-lg font-semibold hover:bg-blue-600 mt-4"
-      >
-        Finalizar Compra
-      </button>
-      <button
-        onClick={onBackToCart}
-        className="w-full bg-gray-300 text-gray-800 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 mt-2"
-      >
-        Volver al Carrito
-      </button>
+      )}
+
+
+
+      {!showCashInput && selectedPaymentMethod !== 'Efectivo' && (
+        <button
+          onClick={() => handleCheckout(selectedPaymentMethod)}
+          className="w-full bg-blue-500 text-white py-3 rounded-lg text-lg font-semibold hover:bg-blue-600 mt-4"
+          disabled={!selectedPaymentMethod}
+        >
+          Finalizar Compra
+        </button>
+      )}
+
+
+      {!showCashInput && (
+        <button
+          onClick={onBackToCart}
+          className="w-full bg-gray-300 text-gray-800 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 mt-2"
+        >
+          Volver al Carrito
+        </button>
+      )}
+
+
     </div>
   );
 };
