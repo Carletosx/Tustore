@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 
-const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowReceiptModal }) => {
+const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowReceiptModal, onPaymentSuccess }) => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [amountReceived, setAmountReceived] = useState('');
   const [change, setChange] = useState(0);
@@ -40,6 +40,7 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowRe
       return;
     }
     // Open modal to select receipt type
+    onPaymentSuccess(selectedPaymentMethod, parseFloat(amountReceived), change);
     onShowReceiptModal(true);
   };
 

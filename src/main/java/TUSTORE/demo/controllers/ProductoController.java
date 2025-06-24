@@ -67,7 +67,7 @@ public class ProductoController {
                     }
                     return dto;
                 })
-                .map(ResponseEntity::ok)
+                .map(dto -> ResponseEntity.ok(dto))
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 

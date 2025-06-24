@@ -70,7 +70,17 @@ const styles = StyleSheet.create({
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
+    marginTop: 5,
+  },
+  separator: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  thankYou: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 20,
   },
   totalText: {
     fontSize: 14,
@@ -78,32 +88,48 @@ const styles = StyleSheet.create({
   },
 });
 
-const BoletaPDF = ({ cart, total }) => (
+const BoletaPDF = ({ cart, total, boletaNumber, cashierName, amountPaid, change, paymentMethod }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <Text style={styles.header}>Boleta de Venta</Text>
-      <Text style={styles.subHeader}>Tu Tienda</Text>
-      <Text style={styles.text}>Fecha: {new Date().toLocaleDateString()}</Text>
-      <Text style={styles.text}>Hora: {new Date().toLocaleTimeString()}</Text>
+      <Text style={styles.header}>TuStore - Minimarket Digital</Text>
+      <Text style={styles.subHeader}>RUC: 12345678900</Text>
+      <Text style={styles.subHeader}>Av. Los Próceres 123, Surco</Text>
+      <Text style={styles.subHeader}>Tel: 987654321 - ventas@tustore.pe</Text>
+      <Text style={styles.text}>Boleta N°: {boletaNumber}</Text>
+      <Text style={styles.text}>Fecha: {new Date().toLocaleDateString()}   Hora: {new Date().toLocaleTimeString()}</Text>
+      <Text style={styles.text}>Cajero: {cashierName}</Text>
+      <Text style={styles.separator}>-------------------------------------------------</Text>
       <View style={styles.table}>
         <View style={styles.tableRow}>
           <Text style={styles.tableColHeader}>Producto</Text>
           <Text style={styles.tableColHeader}>Cantidad</Text>
-          <Text style={styles.tableColHeader}>Precio Unitario</Text>
+          <Text style={styles.tableColHeader}>P. Unit.</Text>
           <Text style={styles.tableColHeader}>Subtotal</Text>
         </View>
+        
         {cart.map((item, index) => (
           <View style={styles.tableRow} key={index}>
             <Text style={styles.tableCol}>{item.nombre}</Text>
             <Text style={styles.tableCol}>{item.quantity}</Text>
-            <Text style={styles.tableCol}>S/. {item.precio.toFixed(2)}</Text>
-            <Text style={styles.tableCol}>S/. {(item.quantity * item.precio).toFixed(2)}</Text>
+            <Text style={styles.tableCol}>{item.precio.toFixed(2)}</Text>
+            <Text style={styles.tableCol}>{(item.quantity * item.precio).toFixed(2)}</Text>
           </View>
         ))}
       </View>
+      <Text style={styles.separator}>-------------------------------------------------</Text>
       <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total: S/. {total.toFixed(2)}</Text>
+        <Text style={styles.totalText}>TOTAL A PAGAR:                        S/ {total.toFixed(2)}</Text>
       </View>
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>PAGO:                                 S/ {amountPaid.toFixed(2)}</Text>
+      </View>
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>VUELTO:                               S/ {change.toFixed(2)}</Text>
+      </View>
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>FORMA DE PAGO:                        {paymentMethod}</Text>
+      </View>
+      <Text style={styles.thankYou}>Gracias por su preferencia</Text>
     </Page>
   </Document>
 );

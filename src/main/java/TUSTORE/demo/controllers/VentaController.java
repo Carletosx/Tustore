@@ -53,6 +53,7 @@ public class VentaController {
         Venta venta = new Venta();
         venta.setFecha(LocalDateTime.now());
         venta.setUsuario(usuario);
+        venta.setAdmin(usuario); // Set the admin to the currently logged-in user
         venta.setMetodoPago(ventaRequest.getMetodoPago());
 
         // Asociar la venta a la caja abierta

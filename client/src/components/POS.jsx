@@ -27,6 +27,7 @@ const POS = () => {
   const [showOpenCashRegisterForm, setShowOpenCashRegisterForm] = useState(false);
   const [showCloseCashRegisterForm, setShowCloseCashRegisterForm] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
+  const [boletaData, setBoletaData] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -326,14 +327,14 @@ const POS = () => {
       const productosToSend = cart.map(item => ({
         productoId: item.id,
         cantidad: item.quantity,
-        precioUnitario: item.price
+        precioUnitario: item.precio
       }));
 
       console.log('Productos being sent:', productosToSend);
 
       const response = await axios.post('http://localhost:8080/api/ventas', {
         detalles: productosToSend,
-        metodoPago: method,
+        paymentMethod: method,
         total: calculateTotal(),
         montoRecibido: method === 'Efectivo' ? amountReceived : null,
         vuelto: method === 'Efectivo' ? change : null
@@ -342,14 +343,17 @@ const POS = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      setSuccessMessage(response.data.message);
-      setShowSuccessModal(true);
-      setCart([]);
-      setShowPaymentOptions(false);
-      if (method === 'Efectivo') {
-        setShowCashModal(false);
-      }
+      setBoletaData({
+        boletaNumber: response.data.boletaNumber, // Assuming the backend returns a boletaNumber
+        cashierName: currentUser,
+        amountPaid: amountReceived,
+        change: change,
+        paymentMethod: method,
+        cart: cart,
+        total: calculateTotal()
+      });
       fetchProducts(selectedCategory); // Refresh product list to update stock
+      return true; // Indicate success
     } catch (error) {
       console.error('Error processing payment:', error);
       setToast({ message: error.response?.data?.message || 'Error al procesar el pago.', type: 'error' });
@@ -498,34 +502,61 @@ const POS = () => {
             <div className="flex justify-between mt-6">
               <button
                 onClick={() => setShowReceiptModal(false)}
-                className="bg-red-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 hover:bg-red-600 hover:shadow-md"
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
               >
                 Cancelar
               </button>
-              <button
-                onClick={async () => {
-                  await handleProcessPayment('Efectivo');
-                  if (selectedReceiptType === 'Boleta') {
-                    const link = document.createElement('a');
-                    const blob = await pdf(<BoletaPDF cart={cart} total={calculateTotal()} />).toBlob();
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'boleta.pdf';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    setSuccessMessage('Boleta generada y descargada correctamente!');
-                  } else {
-                    setSuccessMessage('Compra realizada con éxito!');
-                  }
-                  setShowSuccessModal(true);
-                  setShowReceiptModal(false);
-                  setSelectedReceiptType(null);
-                }}
-                className={`bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${!selectedReceiptType ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600 hover:shadow-md'}`}
-                disabled={!selectedReceiptType}
-              >
-                Finalizar Compra
-              </button>
+              {selectedReceiptType === 'Boleta' && boletaData ? (
+                <PDFDownloadLink
+                  document={<BoletaPDF
+                    cart={boletaData.cart}
+                    total={boletaData.total}
+                    boletaNumber={boletaData.boletaNumber}
+                    cashierName={boletaData.cashierName}
+                    amountPaid={boletaData.amountPaid}
+                    change={boletaData.change}
+                    paymentMethod={boletaData.paymentMethod}
+                  />}
+                  fileName={`boleta_${boletaData.boletaNumber}.pdf`}
+                >
+                  {({ loading }) => (
+                    <button
+                      onClick={() => {
+                        setTimeout(() => {
+                          setSuccessMessage('Compra realizada con éxito!');
+                          setShowSuccessModal(true);
+                          setCart([]);
+                          setShowPaymentOptions(false);
+                          setShowReceiptModal(false);
+                          setSelectedReceiptType(null);
+                        }, 500); // Add a small delay to allow PDF download to initiate
+                      }}
+                      className={`bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600 hover:shadow-md'}`}
+                      disabled={loading}
+                    >
+                      {loading ? 'Generando Boleta...' : 'Finalizar Compra'}
+                    </button>
+                  )}
+                </PDFDownloadLink>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTimeout(() => {
+                      setSuccessMessage('Compra realizada con éxito!');
+                      setShowSuccessModal(true);
+                      setCart([]);
+                      setShowPaymentOptions(false);
+                      setShowReceiptModal(false);
+                      setSelectedReceiptType(null);
+                    }, 500); // Add a small delay to allow PDF download to initiate
+                  }}
+                  className={`bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${!selectedReceiptType ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600 hover:shadow-md'}`}
+                  disabled={!selectedReceiptType}
+                >
+                  Finalizar Compra
+                </button>
+              )}
+
             </div>
           </div>
         </div>
