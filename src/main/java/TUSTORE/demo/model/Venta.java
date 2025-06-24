@@ -33,8 +33,15 @@ public class Venta {
     @NotNull
     @Column(name = "total")
     private BigDecimal total;
-
+    @Column(name = "metodo_pago")
     private String metodoPago;
+
+    @Column(name = "numero_boleta")
+    private String numeroBoleta;
+
+    @NotNull
+    @Column(name = "tipo_comprobante")
+    private String tipoComprobante;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")

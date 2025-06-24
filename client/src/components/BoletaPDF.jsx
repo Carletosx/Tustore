@@ -88,14 +88,14 @@ const styles = StyleSheet.create({
   },
 });
 
-const BoletaPDF = ({ cart, total, boletaNumber, cashierName, amountPaid, change, paymentMethod }) => (
+const BoletaPDF = ({ cart, total, boletaNumber, cashierName, amountPaid, change, paymentMethod, tipoComprobante }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <Text style={styles.header}>TuStore - Minimarket Digital</Text>
       <Text style={styles.subHeader}>RUC: 12345678900</Text>
       <Text style={styles.subHeader}>Av. Los Próceres 123, Surco</Text>
       <Text style={styles.subHeader}>Tel: 987654321 - ventas@tustore.pe</Text>
-      <Text style={styles.text}>Boleta N°: {boletaNumber}</Text>
+      <Text style={styles.text}>{tipoComprobante} N°: {boletaNumber}</Text>
       <Text style={styles.text}>Fecha: {new Date().toLocaleDateString()}   Hora: {new Date().toLocaleTimeString()}</Text>
       <Text style={styles.text}>Cajero: {cashierName}</Text>
       <Text style={styles.separator}>-------------------------------------------------</Text>

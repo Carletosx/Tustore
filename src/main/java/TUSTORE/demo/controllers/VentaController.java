@@ -55,6 +55,10 @@ public class VentaController {
         venta.setUsuario(usuario);
         venta.setAdmin(usuario); // Set the admin to the currently logged-in user
         venta.setMetodoPago(ventaRequest.getMetodoPago());
+        System.out.println("Metodo de Pago recibido en VentaController: " + ventaRequest.getMetodoPago());
+        System.out.println("Metodo de Pago establecido en Venta: " + venta.getMetodoPago());
+        venta.setNumeroBoleta(ventaRequest.getNumeroBoleta());
+        venta.setTipoComprobante(ventaRequest.getTipoComprobante());
 
         // Asociar la venta a la caja abierta
         Caja cajaAbierta = cajaService.getCajaAbierta(usuario.getId())
@@ -92,6 +96,7 @@ public class VentaController {
         venta.setDetalles(detallesVenta);
         venta.setTotal(totalVenta);
         Venta nuevaVenta = ventaService.save(venta);
+        System.out.println("Venta guardada con Metodo de Pago: " + nuevaVenta.getMetodoPago());
 
         return new ResponseEntity<>(nuevaVenta, HttpStatus.CREATED);
     }

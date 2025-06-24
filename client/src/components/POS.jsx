@@ -41,9 +41,10 @@ const POS = () => {
     fetchCategories();
     fetchProducts(selectedCategory);
     fetchCashRegisterStatus();
-    const storedUser = localStorage.getItem('username');
+    const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setCurrentUser(storedUser);
+      const user = JSON.parse(storedUser);
+      setCurrentUser(user.username);
     }
   }, [selectedCategory]);
 
@@ -332,25 +333,31 @@ const POS = () => {
 
       console.log('Productos being sent:', productosToSend);
 
+      const generatedBoletaNumber = `B-${Date.now()}`;
+      const documentType = 'Boleta'; // Assuming 'Boleta' as default for now
+
       const response = await axios.post('http://localhost:8080/api/ventas', {
         detalles: productosToSend,
-        paymentMethod: method,
+        metodoPago: method,
         total: calculateTotal(),
         montoRecibido: method === 'Efectivo' ? amountReceived : null,
-        vuelto: method === 'Efectivo' ? change : null
+        vuelto: method === 'Efectivo' ? change : null,
+        numeroBoleta: generatedBoletaNumber,
+        tipoComprobante: documentType
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       setBoletaData({
-        boletaNumber: response.data.boletaNumber, // Assuming the backend returns a boletaNumber
+        boletaNumber: generatedBoletaNumber,
         cashierName: currentUser,
         amountPaid: amountReceived,
         change: change,
-        paymentMethod: method,
+        metodoPago: method,
         cart: cart,
-        total: calculateTotal()
+        total: calculateTotal(),
+        tipoComprobante: documentType
       });
       fetchProducts(selectedCategory); // Refresh product list to update stock
       return true; // Indicate success

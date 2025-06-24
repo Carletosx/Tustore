@@ -10,6 +10,8 @@ public class VentaRequest {
     private List<DetalleVentaRequest> detalles;
 
     private String metodoPago;
+    private String numeroBoleta;
+    private String tipoComprobante;
 
     public List<DetalleVentaRequest> getDetalles() {
         return detalles;
@@ -25,5 +27,21 @@ public class VentaRequest {
 
     public void setMetodoPago(String metodoPago) {
         this.metodoPago = metodoPago;
+    }
+
+    public String getNumeroBoleta() {
+        return numeroBoleta;
+    }
+
+    public void setNumeroBoleta(String numeroBoleta) {
+        this.numeroBoleta = numeroBoleta;
+    }
+
+    public String getTipoComprobante() {
+        return tipoComprobante;
+    }
+
+    public void setTipoComprobante(String tipoComprobante) {
+        this.tipoComprobante = tipoComprobante;
     }
 }
