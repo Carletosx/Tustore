@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 
 
 const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowReceiptModal, onPaymentSuccess }) => {
+  const [selectedReceiptType, setSelectedReceiptType] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [amountReceived, setAmountReceived] = useState('');
   const [change, setChange] = useState(0);
   const [showCashInput, setShowCashInput] = useState(false);
+  const [clientName, setClientName] = useState('');
+  const [clientDoc, setClientDoc] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
 
 
   useEffect(() => {
@@ -23,25 +27,90 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowRe
 
 
   const handleCheckout = async (paymentMethod) => {
+    if (!selectedReceiptType) {
+      setToast({
+        message: 'Por favor seleccione el tipo de comprobante.',
+        type: 'error'
+      });
+      return;
+    }
+
+    if (selectedReceiptType === 'Factura' && (!clientName || !clientDoc || !clientAddress)) {
+      setToast({
+        message: 'Por favor complete todos los datos del cliente para la factura.',
+        type: 'error'
+      });
+      return;
+    }
+
     setSelectedPaymentMethod(paymentMethod);
     if (paymentMethod === 'Efectivo') {
       setShowCashInput(true);
+      setAmountReceived('');
+      setChange(0);
       return;
     }
-    onPaymentSuccess(paymentMethod);
+
+    await onPaymentSuccess(
+      paymentMethod,
+      0,
+      0,
+      selectedReceiptType === 'Factura' ? { clientName, clientDoc, clientAddress } : null,
+      selectedReceiptType
+    );
   };
 
   const handleProcessCashPayment = async () => {
-    if (parseFloat(amountReceived) < total) {
+    if (!selectedReceiptType) {
+      setToast({
+        message: 'Por favor seleccione el tipo de comprobante.',
+        type: 'error'
+      });
+      return;
+    }
+
+    if (!amountReceived.trim()) {
+      setToast({
+        message: 'Por favor ingrese el monto recibido.',
+        type: 'error'
+      });
+      return;
+    }
+
+    const receivedAmount = parseFloat(amountReceived);
+    if (isNaN(receivedAmount)) {
+      setToast({
+        message: 'Por favor ingrese un monto válido.',
+        type: 'error'
+      });
+      return;
+    }
+
+    if (receivedAmount < total) {
       setToast({
         message: 'El monto recibido es insuficiente.',
         type: 'error'
       });
       return;
     }
-    // Open modal to select receipt type
-    onPaymentSuccess(selectedPaymentMethod, parseFloat(amountReceived), change);
-    onShowReceiptModal(true);
+
+    if (selectedReceiptType === 'Factura') {
+      if (!clientName || !clientDoc || !clientAddress) {
+        setToast({
+          message: 'Por favor complete todos los datos del cliente para la factura.',
+          type: 'error'
+        });
+        return;
+      }
+    }
+
+    await onPaymentSuccess(
+      selectedPaymentMethod,
+      parseFloat(amountReceived),
+      change,
+      selectedReceiptType === 'Factura' ? { clientName, clientDoc, clientAddress } : null,
+      selectedReceiptType
+    );
   };
 
   return (
@@ -72,10 +141,64 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowRe
           <span className="text-xl font-bold">S/. {total.toFixed(2)}</span>
         </div>
       </div>
-      {!showCashInput ? (
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Tipo de Comprobante*</h2>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <button
+            onClick={() => setSelectedReceiptType('Boleta')}
+            className={`py-4 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${selectedReceiptType === 'Boleta' ? 'bg-blue-500 text-white ring-2 ring-blue-500 shadow-lg' : 'bg-blue-200 text-blue-800 hover:bg-blue-300 hover:shadow-md'}`}
+          >
+            Boleta
+          </button>
+          <button
+            onClick={() => setSelectedReceiptType('Factura')}
+            className={`py-4 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${selectedReceiptType === 'Factura' ? 'bg-blue-500 text-white ring-2 ring-blue-500 shadow-lg' : 'bg-blue-200 text-blue-800 hover:bg-blue-300 hover:shadow-md'}`}
+          >
+            Factura
+          </button>
+        </div>
+      </div>
+      {selectedReceiptType === 'Factura' && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-4">Datos del Cliente</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Nombre del Cliente</label>
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Ingrese el nombre del cliente"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">RUC</label>
+              <input
+                type="text"
+                value={clientDoc}
+                onChange={(e) => setClientDoc(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Ingrese el RUC"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Dirección</label>
+              <input
+                type="text"
+                value={clientAddress}
+                onChange={(e) => setClientAddress(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Ingrese la dirección"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {!showCashInput && !selectedPaymentMethod ? (
         <div>
           <h2 className="text-2xl font-bold mb-4">Selecciona el método de pago*</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => handleCheckout('Efectivo')}
               className={`flex flex-col items-center justify-center p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 ${selectedPaymentMethod === 'Efectivo' ? 'border-blue-500 ring-2 ring-blue-500' : ''}`}
@@ -107,7 +230,9 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowRe
             </button>
           </div>
         </div>
-      ) : (
+      ) : null}
+
+      {showCashInput && selectedPaymentMethod === 'Efectivo' && (
         <div className="mt-4 p-4 border rounded-lg bg-gray-50">
           <h3 className="text-xl font-bold mb-3">Pago en Efectivo</h3>
           <div className="mb-3">
@@ -127,7 +252,7 @@ const PaymentOptions = ({ cart, total, onBackToCart, setCart, setToast, onShowRe
             <span className="text-lg font-bold">S/. {change.toFixed(2)}</span>
           </div>
           <button
-            onClick={handleProcessCashPayment}
+            onClick={() => handleProcessCashPayment()}
             className="w-full bg-green-500 text-white py-3 rounded-lg text-lg font-semibold hover:bg-green-600"
           >
             Confirmar Pago en Efectivo

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Toast from './Toast';
 import SuccessModal from './SuccessModal';
@@ -6,6 +6,7 @@ import Cart from './Cart';
 import PaymentOptions from './PaymentOptions';
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import BoletaPDF from './BoletaPDF';
+import FacturaPDF from './FacturaPDF';
 import OpenCashRegisterForm from './OpenCashRegisterForm';
 import CloseCashRegisterForm from './CloseCashRegisterForm';
 
@@ -28,6 +29,7 @@ const POS = () => {
   const [showCloseCashRegisterForm, setShowCloseCashRegisterForm] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
   const [boletaData, setBoletaData] = useState(null);
+  const [facturaData, setFacturaData] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -219,6 +221,8 @@ const POS = () => {
   };
 
   const addToCart = (product) => {
+
+
     if (cashRegisterStatus !== 'ABIERTA') {
       setToast({
         message: 'La caja no está abierta. Por favor, abra la caja primero.',
@@ -302,7 +306,12 @@ const POS = () => {
     setShowPaymentOptions(false);
   };
 
-  const handleProcessPayment = async (method, amountReceived = 0, change = 0) => {
+  const handleProcessPayment = async (method, amountReceived = 0, change = 0, clientData = null, receiptType = null) => {
+    console.log('handleProcessPayment arguments:');
+    console.log('method:', method);
+    console.log('amountReceived:', amountReceived);
+    console.log('change:', change);
+    console.log('clientData:', clientData);
     if (cashRegisterStatus !== 'ABIERTA') {
       setToast({
         message: 'La caja no está abierta. Por favor, abra la caja primero para procesar pagos.',
@@ -333,37 +342,70 @@ const POS = () => {
 
       console.log('Productos being sent:', productosToSend);
 
-      const generatedBoletaNumber = `B-${Date.now()}`;
-      const documentType = 'Boleta'; // Assuming 'Boleta' as default for now
+      const documentNumber = receiptType === 'Factura' ? `F-${Date.now()}` : `B-${Date.now()}`;
+      const documentType = receiptType || 'Boleta';
+      setSelectedReceiptType(receiptType);
 
-      const response = await axios.post('http://localhost:8080/api/ventas', {
+      const requestBody = {
         detalles: productosToSend,
         metodoPago: method,
         total: calculateTotal(),
         montoRecibido: method === 'Efectivo' ? amountReceived : null,
         vuelto: method === 'Efectivo' ? change : null,
-        numeroBoleta: generatedBoletaNumber,
+        numeroDocumento: documentNumber,
         tipoComprobante: documentType
-      }, {
+      };
+
+      console.log('Request Body:', requestBody);
+
+      const response = await axios.post('http://localhost:8080/api/ventas', requestBody, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      setBoletaData({
-        boletaNumber: generatedBoletaNumber,
-        cashierName: currentUser,
-        amountPaid: amountReceived,
-        change: change,
-        metodoPago: method,
-        cart: cart,
-        total: calculateTotal(),
-        tipoComprobante: documentType
-      });
-      fetchProducts(selectedCategory); // Refresh product list to update stock
-      return true; // Indicate success
+      console.log('API Response:', response.data);
+      if (receiptType === 'Factura') {
+        setFacturaData({
+          facturaNumber: documentNumber,
+          cashierName: currentUser,
+          amountPaid: amountReceived,
+          change: change,
+          metodoPago: method,
+          cart: cart.map(item => ({ id: item.id, nombre: item.nombre, precio: item.precio, quantity: item.quantity })),
+          total: calculateTotal(),
+          tipoComprobante: documentType,
+          clientName: clientData?.clientName || '',
+          clientDoc: clientData?.clientDoc || '',
+          clientAddress: clientData?.clientAddress || ''
+        });
+      } else {
+        setBoletaData({
+          boletaNumber: documentNumber,
+          cashierName: currentUser,
+          amountPaid: amountReceived,
+          change: change,
+          metodoPago: method,
+          cart: cart.map(item => ({ id: item.id, nombre: item.nombre, precio: item.precio, quantity: item.quantity })), 
+          total: calculateTotal(),
+          tipoComprobante: documentType
+        });
+      }
+      setShowReceiptModal(true);
+      return true; // Indicate success without updating stock yet
     } catch (error) {
       console.error('Error processing payment:', error);
-      setToast({ message: error.response?.data?.message || 'Error al procesar el pago.', type: 'error' });
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        console.error('Error response headers:', error.response.headers);
+        setToast({ message: error.response.data.message || 'Error al procesar el pago.', type: 'error' });
+      } else if (error.request) {
+        console.error('Error request:', error.request);
+        setToast({ message: 'No se recibió respuesta del servidor. Verifique la conexión.', type: 'error' });
+      } else {
+        console.error('Error message:', error.message);
+        setToast({ message: 'Error al configurar la solicitud: ' + error.message, type: 'error' });
+      }
     }
   };
 
@@ -481,31 +523,10 @@ const POS = () => {
         />
       )}
 
-      {/* Cash Payment Modal (moved from PaymentOptions.jsx) */}
       {showReceiptModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-11/12 md:w-1/3">
-            <h3 className="text-2xl font-bold mb-6 text-center">Seleccione Tipo de Comprobante</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <button
-                onClick={() => setSelectedReceiptType('Boleta')}
-                className={`py-4 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${selectedReceiptType === 'Boleta' ? 'bg-blue-500 text-white ring-2 ring-blue-500 shadow-lg' : 'bg-blue-200 text-blue-800 hover:bg-blue-300 hover:shadow-md'}`}
-               >
-                 Boleta
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedReceiptType('Factura');
-                  setToast({
-                    message: 'Funcionalidad de Factura no implementada aún.',
-                    type: 'info'
-                  });
-                }}
-                className={`py-4 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${selectedReceiptType === 'Factura' ? 'bg-blue-500 text-white ring-2 ring-blue-500 shadow-lg' : 'bg-blue-200 text-blue-800 hover:bg-blue-300 hover:shadow-md'}`}
-                >
-                  Factura (Próximamente)
-              </button>
-            </div>
+            <h3 className="text-2xl font-bold mb-6 text-center">Descargar Comprobante</h3>
             <div className="flex justify-between mt-6">
               <button
                 onClick={() => setShowReceiptModal(false)}
@@ -514,6 +535,8 @@ const POS = () => {
                 Cancelar
               </button>
               {selectedReceiptType === 'Boleta' && boletaData ? (
+                console.log('Boleta Data for PDF:', boletaData),
+                console.log('Selected Receipt Type:', selectedReceiptType),
                 <PDFDownloadLink
                   document={<BoletaPDF
                     cart={boletaData.cart}
@@ -522,40 +545,79 @@ const POS = () => {
                     cashierName={boletaData.cashierName}
                     amountPaid={boletaData.amountPaid}
                     change={boletaData.change}
-                    paymentMethod={boletaData.paymentMethod}
+                    paymentMethod={boletaData.metodoPago}
                   />}
                   fileName={`boleta_${boletaData.boletaNumber}.pdf`}
+                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
                 >
-                  {({ loading }) => (
-                    <button
-                      onClick={() => {
-                        setTimeout(() => {
-                          setSuccessMessage('Compra realizada con éxito!');
-                          setShowSuccessModal(true);
-                          setCart([]);
-                          setShowPaymentOptions(false);
-                          setShowReceiptModal(false);
-                          setSelectedReceiptType(null);
-                        }, 500); // Add a small delay to allow PDF download to initiate
-                      }}
-                      className={`bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600 hover:shadow-md'}`}
-                      disabled={loading}
-                    >
-                      {loading ? 'Generando Boleta...' : 'Finalizar Compra'}
-                    </button>
-                  )}
+                  {({ loading, url, blob }) => {
+                    React.useEffect(() => {
+                      if (!loading && url) {
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `boleta_${boletaData.boletaNumber}.pdf`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        fetchProducts(selectedCategory);
+                        setSuccessMessage('Compra realizada con éxito!');
+                        setShowSuccessModal(true);
+                        setCart([]);
+                        setShowPaymentOptions(false);
+                        setShowReceiptModal(false);
+                        setSelectedReceiptType(null);
+                      }
+                    }, [loading, url]);
+                    return loading ? 'Generando Boleta...' : 'Descargar Boleta PDF';
+                  }}
+                </PDFDownloadLink>
+              ) : selectedReceiptType === 'Factura' && facturaData ? (
+                console.log('Factura Data for PDF:', facturaData),
+                console.log('Selected Receipt Type:', selectedReceiptType),
+                <PDFDownloadLink
+                  document={<FacturaPDF
+                    cart={facturaData.cart}
+                    total={facturaData.total}
+                    facturaNumber={facturaData.facturaNumber}
+                    cashierName={facturaData.cashierName}
+                    amountPaid={facturaData.amountPaid}
+                    change={facturaData.change}
+                    paymentMethod={facturaData.metodoPago}
+                    clientName={facturaData.clientName}
+                    clientDoc={facturaData.clientDoc}
+                    clientAddress={facturaData.clientAddress}
+                  />}
+                  fileName={`factura_${facturaData.facturaNumber}.pdf`}
+                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  {({ loading, url, blob }) => {
+                    React.useEffect(() => {
+                      if (!loading && url) {
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `factura_${facturaData.facturaNumber}.pdf`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        fetchProducts(selectedCategory);
+                        setSuccessMessage('Compra realizada con éxito!');
+                        setShowSuccessModal(true);
+                        setCart([]);
+                        setShowPaymentOptions(false);
+                        setShowReceiptModal(false);
+                        setSelectedReceiptType(null);
+                      }
+                    }, [loading, url]);
+                    return loading ? 'Generando PDF...' : 'Descargar Factura PDF';
+                  }}
                 </PDFDownloadLink>
               ) : (
                 <button
                   onClick={() => {
-                    setTimeout(() => {
-                      setSuccessMessage('Compra realizada con éxito!');
-                      setShowSuccessModal(true);
-                      setCart([]);
-                      setShowPaymentOptions(false);
-                      setShowReceiptModal(false);
-                      setSelectedReceiptType(null);
-                    }, 500); // Add a small delay to allow PDF download to initiate
+                    setSuccessMessage('Compra realizada con éxito!');
+                    setShowSuccessModal(true);
+                    setCart([]);
+                    setShowPaymentOptions(false);
+                    setShowReceiptModal(false);
+                    setSelectedReceiptType(null);
                   }}
                   className={`bg-green-500 text-white py-3 px-6 rounded-lg text-lg font-semibold transition-all duration-200 ${!selectedReceiptType ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600 hover:shadow-md'}`}
                   disabled={!selectedReceiptType}
